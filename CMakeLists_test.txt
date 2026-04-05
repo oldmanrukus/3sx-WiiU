@@ -1,0 +1,43 @@
+# =============================================================================
+# 3SX — Wii U TEST BUILD (lifecycle test only)
+# =============================================================================
+
+cmake_minimum_required(VERSION 3.24)
+project(3sx-wiiu-test LANGUAGES C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_NINJA_FORCE_RESPONSE_FILE ON)
+
+# =============================================================================
+# Include paths
+# =============================================================================
+
+find_program(CYGPATH_EXE cygpath)
+
+if(CYGPATH_EXE)
+    execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/wut/include"
+                    OUTPUT_VARIABLE INC_WUT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/devkitPPC/powerpc-eabi/include"
+                    OUTPUT_VARIABLE INC_DKP OUTPUT_STRIP_TRAILING_WHITESPACE)
+else()
+    set(INC_WUT "$ENV{DEVKITPRO}/wut/include")
+    set(INC_DKP "$ENV{DEVKITPRO}/devkitPPC/powerpc-eabi/include")
+endif()
+
+# =============================================================================
+# Test executable — just main_wiiu_test.c
+# =============================================================================
+
+add_executable(3sx-wiiu-test src/main_wiiu_test.c)
+
+target_compile_options(3sx-wiiu-test PRIVATE
+    "-isystem${INC_WUT}"
+    "-isystem${INC_DKP}"
+)
+
+target_link_libraries(3sx-wiiu-test PRIVATE
+    wut
+)
+
+wiiu_create_rpx(3sx-wiiu-test)

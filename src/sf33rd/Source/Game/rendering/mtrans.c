@@ -22,6 +22,19 @@
 
 #include <SDL3/SDL.h>
 
+/*
+ * Alias the BOOL macro used throughout this file to the BOOLX macro defined in
+ * common.h.  The Wii U system headers define a type named BOOL, and defining
+ * our own BOOL macro caused collisions in those headers.  After undefining
+ * any existing macro named BOOL, this alias preserves the original code’s
+ * semantics (BOOL(expr) evaluates to 1 or 0) without interfering with the
+ * system type definitions.
+ */
+#ifdef BOOL
+#undef BOOL
+#endif
+#define BOOL BOOLX
+
 #define PRIO_BASE_SIZE 128
 
 typedef struct {

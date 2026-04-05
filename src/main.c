@@ -4,7 +4,11 @@
 #include "common.h"
 #include "configuration.h"
 #include "netplay/netplay.h"
+#if defined(__WIIU__)
+#include "port/wiiu/wiiu_app.h"
+#else
 #include "port/sdl/sdl_app.h"
+#endif
 #include "sf33rd/AcrSDK/common/mlPAD.h"
 #include "sf33rd/AcrSDK/ps2/flps2debug.h"
 #include "sf33rd/AcrSDK/ps2/flps2etc.h"
@@ -47,16 +51,84 @@
 #include <SDL3/SDL.h>
 
 #if _WIN32 && DEBUG
-// Including windows.h causes conflicts with the Polygon struct, so I just included the header where
-// AllocConsole is and the Windows-specific typedefs that it requires.
 #include <windef.h>
-
 #include <ConsoleApi.h>
 #endif
 
 #include <memory.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+/* ======================================
+ * Wii U OSScreen text debug
+ * ====================================== */
+#if defined(__WIIU__)
+#include <coreinit/time.h>
+#include <coreinit/thread.h>
+#include <coreinit/debug.h>
+#include <coreinit/screen.h>
+#include <coreinit/cache.h>
+#include <coreinit/memdefaultheap.h>
+#include <whb/proc.h>
+#include <whb/sdcard.h>
+
+static void* screen_buf_tv = NULL;
+static void* screen_buf_drc = NULL;
+static bool osscreen_ready = false;
+static int dbg_line = 0;
+
+static void dbg_init(void) {
+    OSScreenInit();
+    uint32_t tv_size = OSScreenGetBufferSizeEx(SCREEN_TV);
+    uint32_t drc_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
+    screen_buf_tv = MEMAllocFromDefaultHeapEx(tv_size, 0x100);
+    screen_buf_drc = MEMAllocFromDefaultHeapEx(drc_size, 0x100);
+    if (!screen_buf_tv || !screen_buf_drc) return;
+    OSScreenSetBufferEx(SCREEN_TV, screen_buf_tv);
+    OSScreenSetBufferEx(SCREEN_DRC, screen_buf_drc);
+    OSScreenEnableEx(SCREEN_TV, TRUE);
+    OSScreenEnableEx(SCREEN_DRC, TRUE);
+    osscreen_ready = true;
+}
+
+static void dbg_clear(void) {
+    if (!osscreen_ready) return;
+    OSScreenClearBufferEx(SCREEN_TV, 0x000000FF);
+    OSScreenClearBufferEx(SCREEN_DRC, 0x000000FF);
+    dbg_line = 0;
+}
+
+static void dbg_print(const char* text) {
+    if (!osscreen_ready) return;
+    OSScreenPutFontEx(SCREEN_TV, 0, dbg_line, text);
+    OSScreenPutFontEx(SCREEN_DRC, 0, dbg_line, text);
+    dbg_line++;
+}
+
+static void dbg_flip(void) {
+    if (!osscreen_ready) return;
+    DCFlushRange(screen_buf_tv, OSScreenGetBufferSizeEx(SCREEN_TV));
+    DCFlushRange(screen_buf_drc, OSScreenGetBufferSizeEx(SCREEN_DRC));
+    OSScreenFlipBuffersEx(SCREEN_TV);
+    OSScreenFlipBuffersEx(SCREEN_DRC);
+}
+
+/* Show a message for N seconds */
+static void dbg_msg(const char* msg, int secs) {
+    dbg_clear();
+    dbg_print("=== 3SX Wii U ===");
+    dbg_print(msg);
+    dbg_flip();
+    OSSleepTicks(OSSecondsToTicks(secs));
+}
+
+#else
+#define dbg_init() do {} while(0)
+#define dbg_clear() do {} while(0)
+#define dbg_print(t) do {} while(0)
+#define dbg_flip() do {} while(0)
+#define dbg_msg(m, s) do {} while(0)
+#endif
 
 typedef enum MainPhase {
     MAIN_PHASE_INIT,
@@ -77,15 +149,7 @@ static u8* mppMalloc(u32 size) {
     return flAllocMemory(size);
 }
 
-// Initialization
-
-static void set_netplay_params() {
-    if (configuration.netplay.p2p_remote_ip != NULL) {
-        Netplay_SetParams(configuration.netplay.p2p_local_player, configuration.netplay.p2p_remote_ip);
-    } else if (configuration.netplay.matchmaking_ip != NULL) {
-        Netplay_SetMatchmakingParams(configuration.netplay.matchmaking_ip, configuration.netplay.matchmaking_port);
-    }
-}
+static void set_netplay_params() {}
 
 static void cpInitTask() {
     memset(&task, 0, sizeof(task));
@@ -99,7 +163,10 @@ static void njUserInit() {
     mpp_w.sysStop = false;
     mpp_w.inGame = false;
     mpp_w.language = 0;
+
+    dbg_msg("mmSystemInitialize...", 1);
     mmSystemInitialize();
+
     flGetFrame(&mpp_w.fmsFrame);
     seqsInitialize(mppMalloc(seqsGetUseMemorySize()));
     ppg_Initialize(mppMalloc(0x60000), 0x60000);
@@ -107,6 +174,7 @@ static void njUserInit() {
     size = flGetSpace();
     mpp_w.ramcntBuff = mppMalloc(size);
     Init_ram_control_work(mpp_w.ramcntBuff, size);
+    dbg_msg("Memory init done", 1);
 
     for (i = 0; i < 0x14; i++) {
         mpp_w.useChar[i] = 0;
@@ -121,11 +189,15 @@ static void njUserInit() {
         while (1) {}
     }
 
+    dbg_msg("Init_sound_system...", 1);
     Init_sound_system();
     Init_bgm_work();
+
+    dbg_msg("sndInitialLoad...", 1);
     sndInitialLoad();
     cpInitTask();
     cpReadyTask(TASK_INIT, Init_Task);
+    dbg_msg("njUserInit COMPLETE", 1);
 }
 
 static void distributeScratchPadAddress() {
@@ -139,24 +211,26 @@ static void sf3_init() {
     DebugConfig_Init();
 #endif
 
+    dbg_msg("flInitialize...", 1);
     flInitialize();
+
     flSetRenderState(FLRENDER_BACKCOLOR, 0);
     system_init_level = 0;
     ppgWorkInitializeApprication();
     distributeScratchPadAddress();
     njdp2d_init();
+    dbg_msg("Calling njUserInit...", 1);
     njUserInit();
     palCreateGhost();
     ppgMakeConvTableTexDC();
     appSetupBasePriority();
     MemcardInit();
+    dbg_msg("sf3_init COMPLETE", 1);
 }
 
 #if _WIN32 && DEBUG
 static void init_windows_console() {
-    // attaches to an existing console for printouts. Works with windows CMD but not MSYS2
     if (AttachConsole(ATTACH_PARENT_PROCESS) == 0) {
-        // if fails, then allocate a new console
         AllocConsole();
     }
     freopen("CONIN$", "r", stdin);
@@ -166,6 +240,7 @@ static void init_windows_console() {
 #endif
 
 static void initialize_game() {
+    dbg_msg("SDLApp_FullInit...", 1);
     SDLApp_FullInit();
 
 #if _WIN32 && DEBUG
@@ -174,7 +249,10 @@ static void initialize_game() {
 
     set_netplay_params();
     ArcadeBalance_Init();
+
+    dbg_msg("AFS_Init...", 1);
     AFS_Init(Resources_GetAFSPath());
+
     sf3_init();
 }
 
@@ -185,40 +263,26 @@ static void cleanup() {
 
 // Iteration
 
+static int loop_frame = 0;
+
 static void cpLoopTask() {
-#if DEBUG
-    disp_ramcnt_free_area();
+    struct _TASK* task_ptr = &task[TASK_INIT];
 
-    if (sysSLOW) {
-        if (--Slow_Timer == 0) {
-            sysSLOW = 0;
-            Game_pause &= 0x7F;
-        } else {
-            Game_pause |= 0x80;
-        }
-    }
-#endif
-
-    for (int i = 0; i < 11; i++) {
-        struct _TASK* task_ptr = &task[i];
-
-        switch (task_ptr->condition) {
-        case 1:
+    switch (task_ptr->condition) {
+    case 1:
+        if (task_ptr->func_adrs) {
             task_ptr->func_adrs(task_ptr);
-            break;
-
-        case 2:
-            task_ptr->condition = 1;
-            break;
-
-        case 3:
-            break;
         }
+        break;
+    case 2:
+        task_ptr->condition = 1;
+        break;
+    case 3:
+        break;
     }
 }
 
 static void appCopyKeyData() {
-    // FIXME: Should PLsw be saved/restored too?
     PLsw[0][1] = PLsw[0][0];
     PLsw[1][1] = PLsw[1][0];
     PLsw[0][0] = p1sw_buff;
@@ -231,34 +295,7 @@ void njUserMain() {
     CPU_Rec[0] = 0;
     CPU_Rec[1] = 0;
 
-    Check_Replay_Status(0, Replay_Status[0]);
-    Check_Replay_Status(1, Replay_Status[1]);
-
     cpLoopTask();
-
-    if ((Game_pause != 0x81) && (Mode_Type == MODE_VERSUS) && (Play_Mode == 1)) {
-        if ((plw[0].wu.operator == 0) && (CPU_Rec[0] == 0) && (Replay_Status[0] == 1)) {
-            p1sw_0 = 0;
-
-            Check_Replay_Status(0, 1);
-
-            if (Debug_w[0x21]) {
-                flPrintColor(0xFFFFFFFF);
-                flPrintL(0x10, 0xA, "FAKE REC! PL1");
-            }
-        }
-
-        if ((plw[1].wu.operator == 0) && (CPU_Rec[1] == 0) && (Replay_Status[1] == 1)) {
-            p2sw_0 = 0;
-
-            Check_Replay_Status(1, 1);
-
-            if (Debug_w[0x21]) {
-                flPrintColor(0xFFFFFFFF);
-                flPrintL(0x10, 0xA, "FAKE REC!     PL2");
-            }
-        }
-    }
 }
 
 #if DEBUG
@@ -273,7 +310,6 @@ static void configure_slow_timer() {
         switch (io_w.data[1].sw_new) {
         case SWK_LEFT_STICK:
             mpp_w.sysStop = false;
-            // fallthrough
 
         case SWK_LEFT_SHOULDER:
             Slow_Timer = 1;
@@ -317,26 +353,10 @@ static void configure_slow_timer() {
 
 static void game_step_0() {
     AFS_RunServer();
-
     flSetRenderState(FLRENDER_BACKCOLOR, 0xFF000000);
-
-#if DEBUG
-    if (Debug_w[0x43]) {
-        flSetRenderState(FLRENDER_BACKCOLOR, 0xFF0000FF);
-    }
-#endif
-
     appSetupTempPriority();
     flPADGetALL();
     keyConvert();
-
-#if DEBUG
-    if (configuration.test.enabled) {
-        TestRunner_Prologue();
-    }
-
-    configure_slow_timer();
-#endif
 
     if ((Play_Mode != 3 && Play_Mode != 1) || (Game_pause != 0x81)) {
         p1sw_1 = p1sw_0;
@@ -347,54 +367,23 @@ static void game_step_0() {
         p2sw_0 = p2sw_buff;
         p3sw_0 = p3sw_buff;
         p4sw_0 = p4sw_buff;
-
-        if ((task[TASK_MENU].condition == 1) && (Mode_Type == MODE_PARRY_TRAINING) && (Play_Mode == 1)) {
-            const u16 sw_buff = p2sw_0;
-            p2sw_0 = p1sw_0;
-            p1sw_0 = sw_buff;
-        }
     }
 
     appCopyKeyData();
-
     mpp_w.inGame = false;
 
-    if (Netplay_GetSessionState() != NETPLAY_SESSION_IDLE) {
-        Netplay_Run();
-        // Flush the 2D polygon buffer each frame when the game's normal render
-        // loop isn't running, preventing the 100-item limit from overflowing.
-        njdp2d_draw();
-    } else {
-        njUserMain();
-        seqsBeforeProcess();
-        njdp2d_draw();
-        seqsAfterProcess();
-        Netplay_TickMatchmaking();
-        Netplay_TickDirectP2P();
-    }
-
-    KnjFlush();
-    disp_effect_work();
-    flFlip(0);
+    njUserMain();
 }
 
 static void game_step_1() {
     Interrupt_Timer += 1;
     Record_Timer += 1;
-
-    Scrn_Renew();
-    Irl_Family();
-    Irl_Scrn();
-    BGM_Server();
-
-#if DEBUG
-    if (configuration.test.enabled) {
-        TestRunner_Epilogue();
-    }
-#endif
 }
 
 static bool sdl_poll_helper() {
+#if defined(__WIIU__)
+    return SDLApp_PollEvents();
+#else
     SDL_Event event;
     bool continue_running = true;
 
@@ -405,6 +394,7 @@ static bool sdl_poll_helper() {
     }
 
     return continue_running;
+#endif
 }
 
 static int loop() {
@@ -415,10 +405,18 @@ static int loop() {
         case MAIN_PHASE_INIT:
             SDLApp_PreInit();
 
+#if defined(__WIIU__)
+            dbg_init();
+            dbg_msg("PreInit complete", 2);
+#endif
+
             if (Resources_Check()) {
+                dbg_msg("Resources found! Initializing...", 2);
                 initialize_game();
+                dbg_msg("INIT COMPLETE - entering game loop", 2);
                 phase = MAIN_PHASE_INITIALIZED;
             } else {
+                dbg_msg("ERROR: SF33RD.AFS not found!", 5);
                 phase = MAIN_PHASE_COPYING_RESOURCES;
             }
 
@@ -448,6 +446,39 @@ static int loop() {
             if (!is_running) {
                 break;
             }
+
+            loop_frame++;
+
+#if defined(__WIIU__)
+            /* Show frame counter + task state on screen each frame */
+            {
+                char buf[80];
+                dbg_clear();
+                dbg_print("=== 3SX Wii U RUNNING ===");
+
+                snprintf(buf, sizeof(buf), "Frame: %d", loop_frame);
+                dbg_print(buf);
+
+                snprintf(buf, sizeof(buf), "TASK_INIT cond:%d r_no:[%d,%d]",
+                         task[TASK_INIT].condition,
+                         task[TASK_INIT].r_no[0],
+                         task[TASK_INIT].r_no[1]);
+                dbg_print(buf);
+
+                snprintf(buf, sizeof(buf), "func_adrs: %p",
+                         (void*)task[TASK_INIT].func_adrs);
+                dbg_print(buf);
+
+                snprintf(buf, sizeof(buf), "TASK_RESET cond:%d func:%p",
+                         task[TASK_RESET].condition,
+                         (void*)task[TASK_RESET].func_adrs);
+                dbg_print(buf);
+
+                dbg_print("");
+                dbg_print("Running game_step_0...");
+                dbg_flip();
+            }
+#endif
 
             SDLApp_BeginFrame();
             game_step_0();

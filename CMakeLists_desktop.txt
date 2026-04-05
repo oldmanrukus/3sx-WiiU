@@ -1,0 +1,135 @@
+
+# =============================================================================
+# 3SX — Wii U Build (TARGET_WIIU)
+# =============================================================================
+# This is a modified CMakeLists.txt for the Wii U port.
+# Differences from the upstream SDL3 build:
+#   - SDL3, SDL3_net, GekkoNet, FFmpeg, libcdio removed
+#   - WUT libraries linked instead
+#   - src/port/sdl/* excluded, src/port/wiiu/* included
+#   - src/netplay/* excluded (no network support in initial port)
+#   - ADX audio uses a lightweight built-in decoder instead of FFmpeg
+#   - AFS file I/O uses synchronous POSIX reads instead of SDL_AsyncIO
+# =============================================================================
+
+cmake_minimum_required(VERSION 3.24)
+project(3sx-wiiu LANGUAGES C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# ======================================
+# Include directories
+# ======================================
+
+include_directories(
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include/sdk
+)
+
+# ======================================
+# Source collection — exclude SDL and netplay
+# ======================================
+
+file(GLOB_RECURSE GAME_SRC
+    src/sf33rd/*.c
+    src/arcade/*.c
+    src/rendering/*.c
+    src/bin2obj/*.c
+    src/stb/*.c
+    src/port/sdk/*.c
+    src/port/config/*.c
+    src/port/wiiu/*.c
+    src/args.c
+    src/main.c
+)
+
+# Wii U-specific port files
+list(APPEND GAME_SRC
+    src/port/io/afs_wiiu.c
+    src/port/sound/spu_wiiu.c
+    src/port/sound/adx_wiiu.c
+    src/port/sound/emlShim.c
+    src/port/paths_wiiu.c
+    src/port/resources_wiiu.c
+    src/port/utils.c
+)
+
+add_executable(3sx-wiiu ${GAME_SRC})
+
+# ======================================
+# Compile definitions
+# ======================================
+
+target_compile_definitions(3sx-wiiu PRIVATE
+    TARGET_WIIU
+    __WIIU__
+    __WUT__
+    _POSIX_C_SOURCE
+    MEMCARD_DISABLED
+    # Disable netplay for initial port
+    # NETPLAY_ENABLED
+)
+
+# Stub out netplay at compile time
+target_compile_definitions(3sx-wiiu PRIVATE
+    NETPLAY_STUB
+)
+
+# ======================================
+# Compiler flags
+# ======================================
+
+target_compile_options(3sx-wiiu PRIVATE
+    -Wall
+    # -Werror  # Disabled during bringup — re-enable once clean
+    -fno-strict-aliasing
+    -Wno-unused-function
+    -Wno-unused-variable
+    -Wno-unused-but-set-variable
+    -Wno-pointer-sign
+    -Wno-parentheses
+    -Wno-incompatible-pointer-types
+    -Wno-discarded-qualifiers
+    -Wno-format-overflow
+    -Wno-comment
+    -Wno-maybe-uninitialized
+    -Wno-array-bounds
+    -Wno-aggressive-loop-optimizations
+    -Wno-stringop-overflow
+    -Wno-restrict
+    -Wno-stringop-truncation
+)
+
+# ======================================
+# Dependencies — WUT libraries
+# ======================================
+
+set(WUT_ROOT $ENV{DEVKITPRO}/wut)
+
+target_link_libraries(3sx-wiiu PRIVATE
+    # WUT core
+    wut
+    # GX2 rendering
+    gx2
+    # Audio
+    sndcore2
+    # Input
+    vpad
+    padscore
+    # OS / filesystem
+    coreinit
+    sysapp
+    proc_ui
+    # Compression (Wii U has zlib in coreinit, but link system zlib too)
+    z
+    # Math
+    m
+)
+
+# ======================================
+# Post-build: ELF → RPX
+# ======================================
+
+wiiu_create_rpx(3sx-wiiu)

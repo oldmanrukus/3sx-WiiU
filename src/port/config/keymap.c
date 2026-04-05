@@ -7,6 +7,31 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+/*
+ * On Wii U there is no keyboard input, so the key mapping system is
+ * unused.  Provide stubs for Keymap_Init and Keymap_GetScancodes when
+ * TARGET_WIIU is defined.  For other platforms we compile the
+ * full SDL-based keymap implementation below.  See the Wii U port
+ * README for details【198238269591632†screenshot】.
+ */
+#if defined(TARGET_WIIU)
+
+void Keymap_Init(void) {
+    /* Nothing to initialize on Wii U — input is handled by VPAD/KPAD */
+}
+
+const SDL_Scancode* Keymap_GetScancodes(KeymapButton button) {
+    /* Return a static table of unknown scancodes; callers will see
+     * SDL_SCANCODE_UNKNOWN for all buttons.  The Wii U port uses
+     * hardcoded button mappings in wiiu_pad.c instead of keyboard
+     * scancodes.
+     */
+    static SDL_Scancode empty[KEYMAP_BUTTON_COUNT][KEYMAP_CODES_PER_BUTTON] = { { SDL_SCANCODE_UNKNOWN } };
+    return empty[button];
+}
+
+#else /* TARGET_WIIU */
+
 static const SDL_Scancode default_keymap[KEYMAP_BUTTON_COUNT][KEYMAP_CODES_PER_BUTTON] = {
     { SDL_SCANCODE_UP, SDL_SCANCODE_W, SDL_SCANCODE_SPACE }, // up
     { SDL_SCANCODE_DOWN, SDL_SCANCODE_S },                   // down
@@ -177,3 +202,5 @@ void Keymap_Init() {
 const SDL_Scancode* Keymap_GetScancodes(KeymapButton button) {
     return keymap[button];
 }
+
+#endif /* TARGET_WIIU */

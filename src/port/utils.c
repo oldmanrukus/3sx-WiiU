@@ -5,13 +5,16 @@
 #include <windows.h>
 #include <dbghelp.h>
 #define SYMBOL_NAME_MAX 256
+#elif defined(TARGET_WIIU)
+#include <coreinit/debug.h>
+#include <stdlib.h>
 #else
 #include <execinfo.h>
 #include <signal.h>
-#include <unistd.h>
 #endif
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,11 +24,22 @@ void fatal_error(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
+#if defined(TARGET_WIIU)
+    char buffer[1024];
+    int written = vsnprintf(buffer, sizeof(buffer), fmt, args);
+    if (written < 0) {
+        OSFatal("Fatal error");
+    } else {
+        OSFatal(buffer);
+    }
+    va_end(args);
+    abort();
+#else
     fprintf(stderr, "Fatal error: ");
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
-
     va_end(args);
+
     void* buffer[BACKTRACE_MAX];
 
 #if !_WIN32
@@ -34,30 +48,38 @@ void fatal_error(const char* fmt, ...) {
     backtrace_symbols_fd(buffer, nptrs, fileno(stderr));
 #else
     fprintf(stderr, "Stack trace:\n");
+
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, NULL, TRUE);
+
     int nptrs = CaptureStackBackTrace(0, BACKTRACE_MAX, buffer, NULL);
-    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(1, sizeof(SYMBOL_INFO) + SYMBOL_NAME_MAX);
+
+    SYMBOL_INFO* symbol =
+        (SYMBOL_INFO*)calloc(1, sizeof(SYMBOL_INFO) + SYMBOL_NAME_MAX);
     if (!symbol) {
         fprintf(stderr, "Calloc failed when allocating SYMBOL_INFO, bailing!\n\n");
         SymCleanup(process);
         abort();
     }
+
     symbol->MaxNameLen = SYMBOL_NAME_MAX;
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
     for (int i = 0; i < nptrs; i++) {
         SymFromAddr(process, (DWORD64)buffer[i], 0, symbol);
         fprintf(stderr, "%i: %s - 0x%0llX\n", nptrs - i - 1, symbol->Name, symbol->Address);
     }
+
     free(symbol);
     SymCleanup(process);
 #endif
 
     abort();
+#endif
 }
 
 void not_implemented(const char* func) {
-    fatal_error("Function not implemented: %s\n", func);
+    fatal_error("Function not implemented: %s", func);
 }
 
 void debug_print(const char* fmt, ...) {
@@ -67,6 +89,8 @@ void debug_print(const char* fmt, ...) {
     vfprintf(stdout, fmt, args);
     fprintf(stdout, "\n");
     va_end(args);
+#else
+    (void)fmt;
 #endif
 }
 
@@ -78,8 +102,13 @@ void stop_if(bool condition) {
 
 #if _WIN32
     __debugbreak();
+#elif defined(TARGET_WIIU)
+    OSReport("[3SX] stop_if triggered\n");
 #else
     raise(SIGSTOP);
 #endif
+
+#else
+    (void)condition;
 #endif
 }

@@ -1,0 +1,29 @@
+; =============================================================================
+; 3SX Wii U — Pixel Shader (latte assembly)
+; =============================================================================
+; Input varyings (from vertex shader):
+;   v0 = texcoord (u, v)
+;   v1 = color    (r, g, b, a)
+;
+; Sampler 0 = game texture (RGBA8888)
+;
+; Output:
+;   color = texture_sample * vertex_color
+;
+; When no texture is bound (solid color quads), the texture sample
+; returns white (1,1,1,1) so the output is just vertex_color.
+; =============================================================================
+
+; Sample texture at texcoord
+00 TEX:        SAMPLE R0, R0.xy, t0, s0
+
+; Multiply texture color by vertex color
+01 ALU:        MUL R0.x, R0.x, R1.x
+02 ALU:        MUL R0.y, R0.y, R1.y
+03 ALU:        MUL R0.z, R0.z, R1.z
+04 ALU:        MUL R0.w, R0.w, R1.w
+
+; Export final color
+05 EXP_DONE:   PIX0, R0.xyzw
+
+END

@@ -1,5 +1,17 @@
 #include "common.h"
+/*
+ * Select the appropriate pad header based on the target platform.  On
+ * Wii U the SDL gamepad types and device events are not available;
+ * instead the port provides a Wii U-specific pad implementation with
+ * the same SDLPad_* interface.  Use wiiu_pad.h when TARGET_WIIU is
+ * defined, otherwise fall back to the SDL version.  See the Wii U
+ * README for details on input handling【198238269591632†screenshot】.
+ */
+#if defined(TARGET_WIIU)
+#include "port/wiiu/wiiu_pad.h"
+#else
 #include "port/sdl/sdl_pad.h"
+#endif
 
 #include <libpad2.h>
 

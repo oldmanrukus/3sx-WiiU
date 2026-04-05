@@ -1,0 +1,4 @@
+/home/billy/3sx/build-wiiu-ninja/CMakeFiles/3sx-core.dir
+/home/billy/3sx/build-wiiu-ninja/CMakeFiles/3sx-wiiu.dir
+/home/billy/3sx/build-wiiu-ninja/CMakeFiles/edit_cache.dir
+/home/billy/3sx/build-wiiu-ninja/CMakeFiles/rebuild_cache.dir
