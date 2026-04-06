@@ -186,7 +186,7 @@ void mlt_obj_disp(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -287,7 +287,7 @@ void mlt_obj_disp_rgb(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -427,7 +427,7 @@ void mlt_obj_trans_ext(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -675,7 +675,7 @@ void mlt_obj_trans(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -800,7 +800,7 @@ void mlt_obj_trans_cp3_ext(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -1060,7 +1060,7 @@ void mlt_obj_trans_cp3(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -1190,7 +1190,7 @@ void mlt_obj_trans_rgb_ext(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -1428,7 +1428,7 @@ void mlt_obj_trans_rgb(MultiTexture* mt, WORK* wk, s32 base_y) {
     if (texgrplds[i].ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", i);
-        while (1) {}
+        return;
     }
 
     n -= texgrpdat[i].num_of_1st;
@@ -1558,9 +1558,7 @@ void appRenewTempPriority(s32 z) {
 
 void seqsInitialize(void* adrs) {
     if (adrs == NULL) {
-        while (1) {
-            // Do nothing
-        }
+        return;
     }
 
     seqs_w.chip = (Sprite2*)adrs;
@@ -1680,7 +1678,7 @@ s32 seqsStoreChip(f32 x, f32 y, s32 w, s32 h, s32 gix, s32 code, s32 attr, s32 a
     if (seqs_w.sprTotal > 0x400) {
         // The number of OBJ fragments has exceeded the planned number
         flLogOut("ＯＢＪの破片が予定数を越えてしまいました");
-        while (1) {}
+        return 0;
     }
 
     return 1;
@@ -1719,7 +1717,7 @@ static s32 get_mltbuf16(MultiTexture* mt, u32 code, u32 palt, s32* ret) {
 
             // CG cache is full. 16x16: %d\n
             flLogOut("ＣＧキャッシュが一杯になりました。１６×１６ : %d\n", mt->id);
-            while (1) {}
+            return 0;
         }
     }
 }
@@ -1757,7 +1755,7 @@ static s32 get_mltbuf32(MultiTexture* mt, u32 code, u32 palt, s32* ret) {
 
             // CG cache is full. 32x32 : %d\n
             flLogOut("ＣＧキャッシュが一杯になりました。３２×３２ : %d\n", mt->id);
-            while (1) {}
+            return 0;
         }
     }
 }
@@ -1797,7 +1795,7 @@ static s32 get_mltbuf16_ext_2(MultiTexture* mt, u32 code, u32 palt, s32* ret, Pa
 
     // CG cache is full. x16 EXT2\n
     flLogOut("ＣＧキャッシュが一杯になりました。×１６　ＥＸＴ２\n");
-    while (1) {}
+    return 0;
 }
 
 static s32 get_mltbuf32_ext_2(MultiTexture* mt, u32 code, u32 palt, s32* ret, PatternInstance* cp) {
@@ -1834,7 +1832,7 @@ static s32 get_mltbuf32_ext_2(MultiTexture* mt, u32 code, u32 palt, s32* ret, Pa
     }
 
     flLogOut("ＣＧキャッシュが一杯になりました。×３２　ＥＸＴ２\n");
-    while (1) {}
+    return 0;
 }
 
 static s32 get_mltbuf16_ext(MultiTexture* mt, u32 code, u32 palt) {
@@ -1848,7 +1846,7 @@ static s32 get_mltbuf16_ext(MultiTexture* mt, u32 code, u32 palt) {
     }
 
     flLogOut("ＣＧ展開エラー　１６×１６\n");
-    while (1) {}
+    return 0;
 }
 
 static s32 get_mltbuf32_ext(MultiTexture* mt, u32 code, u32 palt) {
@@ -1862,7 +1860,7 @@ static s32 get_mltbuf32_ext(MultiTexture* mt, u32 code, u32 palt) {
     }
 
     flLogOut("ＣＧ展開エラー　３２×３２\n");
-    while (1) {}
+    return 0;
 }
 
 static u16 x16_mapping_set(PatternMap* map, s32 code) {
@@ -1951,7 +1949,7 @@ static s32 get_free_patcash_index(PatternCollection* padr) {
     }
 
     flLogOut("ＣＧキャッシュバッファが一杯になりました。\n");
-    while (1) {}
+    return 0;
 }
 
 static void lz_ext_p6_fx(u8* srcptr, u8* dstptr, u32 len) {
@@ -2210,7 +2208,7 @@ void mlt_obj_melt2(MultiTexture* mt, u16 cg_number) {
     if (grplds->ok == 0) {
         // The trans data is not valid. Group number: %d\n
         flLogOut("トランスデータが有効ではありません。グループ番号：%d\n", obj_group_table[cg_number]);
-        while (1) {}
+        return;
     }
 
     n = *(u32*)grplds->trans_table / 4;

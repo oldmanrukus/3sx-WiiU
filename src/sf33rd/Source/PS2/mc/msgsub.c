@@ -154,7 +154,8 @@ static void str_tag_check(const s8* tag) {
 err:
     printf("message format error, <%s>\n.", tag0);
 
-    while (1) {
-        // Do nothing
-    }
+    return;
+
+
+
 }

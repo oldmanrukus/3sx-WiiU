@@ -14,8 +14,7 @@
 #include <assert.h>
 #include <memory.h>
 
-#define ERR_STOP                                                                                                       \
-    while (1) {}
+#define ERR_STOP ((void)0)
 
 static s32 flPS2ConvertTextureFromContext(plContext* lpcontext, FLTexture* lpflTexture, u32 type);
 u32 flPS2GetTextureSize(u32 format, s32 dw, s32 dh, s32 bnum);

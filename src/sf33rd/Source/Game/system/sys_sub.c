@@ -994,7 +994,7 @@ bool Cut_Cut_Loser() {
 }
 
 void njWaitVSync_with_N() {
-    while (1) {}
+    return;
 }
 
 void Soft_Reset_Sub() {

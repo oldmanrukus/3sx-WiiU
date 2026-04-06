@@ -1,14 +1,10 @@
 /**
  * @file afs_wiiu.c
- * @brief AFS file reader for Wii U — replaces SDL_AsyncIO-based afs.c
+ * @brief AFS file reader for Wii U
  *
- * The Wii U filesystem (via WUT's POSIX compat layer) doesn't have
- * async I/O like SDL3. Since the AFS reads are typically small and
- * the SD card / USB is fast enough for a PS2-era game's streaming
- * needs, we use synchronous pread()-style reads.
- *
- * The "async" state machine is preserved (AFS_Read → AFS_GetState)
- * but reads complete immediately in AFS_RunServer.
+ * Key difference from original: the AFS file is opened ONCE during
+ * init and kept open. The original version did fopen/fclose on every
+ * read which may hang or be extremely slow on Wii U's SD card.
  */
 #include "port/io/afs.h"
 #include "common.h"
@@ -17,7 +13,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <SDL3/SDL.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,6 +37,7 @@ typedef struct AFSEntry {
 
 typedef struct AFS {
     char* file_path;
+    FILE* file_handle;  /* Kept open for the lifetime of the AFS */
     unsigned int entry_count;
     AFSEntry* entries;
 } AFS;
@@ -52,7 +48,6 @@ typedef struct ReadRequest {
     int file_num;
     int sector;
     AFSReadState state;
-    /* Pending read info */
     void* pending_buf;
     int pending_sectors;
     unsigned int pending_offset;
@@ -66,14 +61,8 @@ static AFS afs = { 0 };
 static ReadRequest requests[AFS_MAX_READ_REQUESTS] = { { 0 } };
 
 /* ======================================
- * Helper: read big-endian values
+ * Helper: read little-endian values from file
  * ====================================== */
-
-static uint16_t fread_be16(FILE* f) {
-    uint8_t buf[2];
-    fread(buf, 1, 2, f);
-    return ((uint16_t)buf[0] << 8) | buf[1];
-}
 
 static uint32_t fread_be32(FILE* f) {
     uint8_t buf[4];
@@ -105,7 +94,9 @@ static bool is_valid_attribute_data(uint32_t attr_off, uint32_t attr_size,
 }
 
 static bool init_afs(const char* file_path) {
-    afs.file_path = SDL_strdup(file_path);
+    size_t path_len = strlen(file_path);
+    afs.file_path = (char*)malloc(path_len + 1);
+    memcpy(afs.file_path, file_path, path_len + 1);
 
     FILE* f = fopen(file_path, "rb");
     if (!f) {
@@ -152,7 +143,6 @@ static bool init_afs(const char* file_path) {
                                 entries_end, afs.entry_count)) {
         has_attrs = true;
     } else {
-        /* Try alternate location */
         fseek(f, entries_start - 8, SEEK_SET);
         attr_off  = fread_le32(f);
         attr_size = fread_le32(f);
@@ -165,7 +155,6 @@ static bool init_afs(const char* file_path) {
     for (unsigned int i = 0; i < afs.entry_count; i++) {
         if (afs.entries[i].offset != 0 && has_attrs) {
             fseek(f, attr_off + i * 48, SEEK_SET);
-            /* Read null-terminated string */
             int j = 0;
             char c;
             do {
@@ -177,7 +166,9 @@ static bool init_afs(const char* file_path) {
         }
     }
 
-    fclose(f);
+    /* Keep the file open for reads — don't fclose */
+    afs.file_handle = f;
+
     OSReport("[3SX] AFS: Loaded %u entries from %s\n", afs.entry_count, file_path);
     return true;
 }
@@ -187,6 +178,10 @@ bool AFS_Init(const char* file_path) {
 }
 
 void AFS_Finish(void) {
+    if (afs.file_handle) {
+        fclose(afs.file_handle);
+        afs.file_handle = NULL;
+    }
     free(afs.file_path);
     free(afs.entries);
     memset(&afs, 0, sizeof(afs));
@@ -201,35 +196,47 @@ unsigned int AFS_GetSize(int file_num) {
 }
 
 /* ======================================
+ * Direct sync read by file number
+ * Used by the simplified gd3rd.c sync path
+ * ====================================== */
+
+static bool afs_read_direct(int file_num, void* buf, unsigned int byte_count) {
+    if (!afs.file_handle) return false;
+    if (file_num < 0 || file_num >= (int)afs.entry_count) return false;
+
+    unsigned int offset = afs.entries[file_num].offset;
+    fseek(afs.file_handle, offset, SEEK_SET);
+    size_t got = fread(buf, 1, byte_count, afs.file_handle);
+    return (got == byte_count);
+}
+
+/* ======================================
  * Read operations
  * ====================================== */
 
 void AFS_RunServer(void) {
-    /* Process any pending reads — since we do sync I/O, this
-     * just completes them immediately */
+    if (!afs.file_handle) return;
+
     for (int i = 0; i < AFS_MAX_READ_REQUESTS; i++) {
         ReadRequest* req = &requests[i];
         if (!req->initialized || req->state != AFS_READ_STATE_READING)
             continue;
 
-        /* Do the actual read */
-        FILE* f = fopen(afs.file_path, "rb");
-        if (!f) {
-            req->state = AFS_READ_STATE_ERROR;
-            continue;
-        }
-
-        fseek(f, req->pending_offset, SEEK_SET);
+        fseek(afs.file_handle, req->pending_offset, SEEK_SET);
         size_t bytes_to_read = req->pending_sectors * 2048;
-        size_t bytes_read = fread(req->pending_buf, 1, bytes_to_read, f);
-        fclose(f);
+        size_t bytes_read = fread(req->pending_buf, 1, bytes_to_read, afs.file_handle);
 
         if (bytes_read == bytes_to_read) {
             req->state = AFS_READ_STATE_FINISHED;
         } else {
-            req->state = AFS_READ_STATE_ERROR;
-            OSReport("[3SX] AFS: Read error: wanted %zu, got %zu\n",
-                     bytes_to_read, bytes_read);
+            /* Partial read is OK — file might not be sector-aligned */
+            if (bytes_read > 0) {
+                req->state = AFS_READ_STATE_FINISHED;
+            } else {
+                req->state = AFS_READ_STATE_ERROR;
+                OSReport("[3SX] AFS: Read error file %d: wanted %zu, got %zu\n",
+                         req->file_num, bytes_to_read, bytes_read);
+            }
         }
     }
 }
@@ -247,12 +254,14 @@ AFSHandle AFS_Open(int file_num) {
         return i;
     }
 
+    OSReport("[3SX] AFS: No free request slots!\n");
     return AFS_NONE;
 }
 
 void AFS_Read(AFSHandle handle, int sectors, void* buf) {
-    ReadRequest* req = &requests[handle];
+    if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return;
 
+    ReadRequest* req = &requests[handle];
     req->pending_buf = buf;
     req->pending_sectors = sectors;
     req->pending_offset = afs.entries[req->file_num].offset +
@@ -262,40 +271,39 @@ void AFS_Read(AFSHandle handle, int sectors, void* buf) {
 }
 
 void AFS_ReadSync(AFSHandle handle, int sectors, void* buf) {
+    if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return;
+    if (!afs.file_handle) return;
+
     AFS_Read(handle, sectors, buf);
 
-    /* Immediately process */
     ReadRequest* req = &requests[handle];
 
-    FILE* f = fopen(afs.file_path, "rb");
-    if (!f) {
-        req->state = AFS_READ_STATE_ERROR;
-        return;
-    }
-
-    fseek(f, req->pending_offset, SEEK_SET);
+    fseek(afs.file_handle, req->pending_offset, SEEK_SET);
     size_t bytes = sectors * 2048;
-    size_t got = fread(buf, 1, bytes, f);
-    fclose(f);
+    size_t got = fread(buf, 1, bytes, afs.file_handle);
 
-    req->state = (got == bytes) ? AFS_READ_STATE_FINISHED :
-                                  AFS_READ_STATE_ERROR;
+    /* Accept partial reads — file data may not be sector-aligned */
+    req->state = (got > 0) ? AFS_READ_STATE_FINISHED :
+                              AFS_READ_STATE_ERROR;
 }
 
 void AFS_Stop(AFSHandle handle) {
-    /* Nothing to cancel with sync I/O */
     (void)handle;
 }
 
 void AFS_Close(AFSHandle handle) {
+    if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return;
     memset(&requests[handle], 0, sizeof(ReadRequest));
 }
 
 AFSReadState AFS_GetState(AFSHandle handle) {
+    if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS)
+        return AFS_READ_STATE_ERROR;
     return requests[handle].state;
 }
 
 unsigned int AFS_GetSectorCount(AFSHandle handle) {
+    if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return 0;
     ReadRequest* req = &requests[handle];
     unsigned int size = afs.entries[req->file_num].size;
     return (size + 2048 - 1) / 2048;

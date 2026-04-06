@@ -200,7 +200,7 @@ void q_ldreq_texture_group(REQ* curr) {
 
                 // A duplicate transfer occurred. File number: %d\n
                 flLogOut("二重転送が発生しました。ファイル番号：%d\n", bsd->apfn);
-                while (1) {}
+                return;
             }
 
             rckey_work[curr->lds->key].type = curr->kokey;
@@ -354,7 +354,7 @@ void reservMemKeySelObj() {
     lds->key = Pull_ramcnt_key(size, 0xD, 0, 1);
 
     if (lds->key < 0) {
-        while (1) {}
+        return;
     }
 }
 

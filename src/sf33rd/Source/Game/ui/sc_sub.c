@@ -207,7 +207,7 @@ void Scrscreen_Init() {
     ppgSetupCurrentDataList(&ppgScrList);
     loadSize = load_it_use_any_key2(10, &loadAdrs, &key, 2, 0); // scrscrn.ppg
 
-    if (loadSize == 0) {
+    if ((s32)loadSize <= 0) {
         // Could not load texture for score screen.
         // On Wii U, return instead of hanging forever.
         return;

@@ -130,7 +130,7 @@ void TITLE_Init() {
     if (loadSize == 0) {
         // Main title texture could not be loaded.
         flLogOut("メインタイトルのテクスチャが読み込めませんでした。\n");
-        while (1) {}
+        return;
     }
 
     ppgSetupTexChunk_1st(NULL, loadAdrs, loadSize, 601, 1, 0, 0);
@@ -207,7 +207,7 @@ void OPBG_Init() {
     if ((key = Search_ramcnt_type(0x1D)) == 0) {
         // Opening demo texture has not been loaded.
         flLogOut("オープニングデモテクスチャが読み込まれていません。\n");
-        while (1) {}
+        return;
     }
 
     loadSize = Get_size_data_ramcnt_key(key);

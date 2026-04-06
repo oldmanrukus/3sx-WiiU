@@ -25,12 +25,7 @@
 #include "sf33rd/Source/Game/init3rd.h"
 #include "sf33rd/Source/Game/io/gd3rd.h"
 #include "sf33rd/Source/Game/io/ioconv.h"
-#include "sf33rd/Source/Game/io/pulpul.h"
 #include "sf33rd/Source/Game/menu/menu.h"
-#include "sf33rd/Source/Game/rendering/texgroup.h"
-#include "sf33rd/Source/Game/rendering/aboutspr.h"
-#include "sf33rd/Source/Game/ui/sc_sub.h"
-#include "sf33rd/Source/Game/demo/demo00.h"
 #include "sf33rd/Source/Game/rendering/color3rd.h"
 #include "sf33rd/Source/Game/rendering/dc_ghost.h"
 #include "sf33rd/Source/Game/rendering/mtrans.h"
@@ -64,9 +59,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-/* ======================================
- * Wii U OSScreen text debug
- * ====================================== */
+/* Wii U OSScreen debug */
 #if defined(__WIIU__)
 #include <coreinit/time.h>
 #include <coreinit/thread.h>
@@ -126,18 +119,12 @@ static void dbg_msg(const char* msg, int secs) {
     OSSleepTicks(OSSecondsToTicks(secs));
 }
 
-static void dbg_step(const char* step) {
-    dbg_print(step);
-    dbg_flip();
-}
-
 #else
 #define dbg_init() do {} while(0)
 #define dbg_clear() do {} while(0)
 #define dbg_print(t) do {} while(0)
 #define dbg_flip() do {} while(0)
 #define dbg_msg(m, s) do {} while(0)
-#define dbg_step(s) do {} while(0)
 #endif
 
 typedef enum MainPhase {
@@ -165,80 +152,6 @@ static void cpInitTask() {
     memset(&task, 0, sizeof(task));
 }
 
-/* ======================================
- * DEBUG version of Init_Task_1st
- *
- * Tests each function call with a debug print.
- * The LAST numbered line on screen = the crasher.
- * After all calls succeed, runs the real Init_Task
- * to do the variable assignments.
- * ====================================== */
-static void Init_Task_1st_debug(struct _TASK* task_ptr) {
-    task_ptr->r_no[0] = 1;
-
-    dbg_clear();
-    dbg_print("=== Init_Task_1st DEBUG ===");
-
-    dbg_step("1. init_texcash_1st...");
-    init_texcash_1st();
-
-    dbg_step("2. Init_texgrplds_work...");
-    Init_texgrplds_work();
-
-    dbg_step("3. Init_load_on_memory_data...");
-    Init_load_on_memory_data();
-
-    dbg_step("4. Pause_Family_On...");
-    Pause_Family_On();
-
-    dbg_step("5. Bg_TexInit...");
-    Bg_TexInit();
-
-    dbg_step("6. Scrscreen_Init...");
-    Scrscreen_Init();
-
-    dbg_step("7. effect_work_init...");
-    effect_work_init();
-
-    dbg_step("8. init_pulpul_work...");
-    init_pulpul_work();
-
-    dbg_step("9. Init_Load_Request_Queue_1st...");
-    Init_Load_Request_Queue_1st();
-
-    dbg_step("10. Game_Data_Init...");
-    Game_Data_Init();
-
-    dbg_step("11. Copy_Check_w...");
-    Copy_Check_w();
-
-    dbg_step("12. Setup_Limit_Time...");
-    Setup_Limit_Time();
-
-    dbg_step("13. pulpul_stop...");
-    pulpul_stop();
-
-    dbg_step("14. Warning_Init...");
-    Warning_Init();
-
-    dbg_step("ALL CALLS DONE - calling real Init_Task_1st");
-
-    /* Reset so the real Init_Task runs Init_Task_1st with all
-     * the variable assignments we skipped */
-    task_ptr->r_no[0] = 0;
-    Init_Task(task_ptr);
-
-    dbg_step("INIT_TASK_1ST COMPLETE!");
-}
-
-static void Init_Task_debug(struct _TASK* task_ptr) {
-    if (task_ptr->r_no[0] == 0) {
-        Init_Task_1st_debug(task_ptr);
-    } else {
-        Init_Task(task_ptr);
-    }
-}
-
 static void njUserInit() {
     s32 i;
     u32 size;
@@ -247,10 +160,7 @@ static void njUserInit() {
     mpp_w.sysStop = false;
     mpp_w.inGame = false;
     mpp_w.language = 0;
-
-    dbg_msg("mmSystemInitialize...", 1);
     mmSystemInitialize();
-
     flGetFrame(&mpp_w.fmsFrame);
     seqsInitialize(mppMalloc(seqsGetUseMemorySize()));
     ppg_Initialize(mppMalloc(0x60000), 0x60000);
@@ -272,15 +182,11 @@ static void njUserInit() {
         while (1) {}
     }
 
-    dbg_msg("Init_sound_system...", 1);
     Init_sound_system();
     Init_bgm_work();
-
-    dbg_msg("sndInitialLoad...", 1);
     sndInitialLoad();
     cpInitTask();
-    cpReadyTask(TASK_INIT, Init_Task_debug);
-    dbg_msg("njUserInit COMPLETE", 1);
+    cpReadyTask(TASK_INIT, Init_Task);
 }
 
 static void distributeScratchPadAddress() {
@@ -294,20 +200,17 @@ static void sf3_init() {
     DebugConfig_Init();
 #endif
 
-    dbg_msg("flInitialize...", 1);
     flInitialize();
     flSetRenderState(FLRENDER_BACKCOLOR, 0);
     system_init_level = 0;
     ppgWorkInitializeApprication();
     distributeScratchPadAddress();
     njdp2d_init();
-    dbg_msg("njUserInit...", 1);
     njUserInit();
     palCreateGhost();
     ppgMakeConvTableTexDC();
     appSetupBasePriority();
     MemcardInit();
-    dbg_msg("sf3_init COMPLETE", 1);
 }
 
 #if _WIN32 && DEBUG
@@ -333,13 +236,15 @@ static void initialize_game() {
     ArcadeBalance_Init();
     dbg_msg("AFS_Init...", 1);
     AFS_Init(Resources_GetAFSPath());
-{
+
+    {
         char buf[128];
-        snprintf(buf, sizeof(buf), "AFS files: %u  path: %.60s",
-                 AFS_GetFileCount(), Resources_GetAFSPath());
-        dbg_msg(buf, 3);
+        snprintf(buf, sizeof(buf), "AFS files: %u", AFS_GetFileCount());
+        dbg_msg(buf, 2);
     }
+
     sf3_init();
+    dbg_msg("Init complete!", 2);
 }
 
 static void cleanup() {
@@ -347,20 +252,34 @@ static void cleanup() {
     SDLApp_Quit();
 }
 
-static void cpLoopTask() {
-    struct _TASK* task_ptr = &task[TASK_INIT];
+// Iteration
 
-    switch (task_ptr->condition) {
-    case 1:
-        if (task_ptr->func_adrs) {
-            task_ptr->func_adrs(task_ptr);
+static void cpLoopTask() {
+    for (int i = 0; i < 11; i++) {
+        struct _TASK* task_ptr = &task[i];
+
+        switch (task_ptr->condition) {
+        case 1:
+            if (task_ptr->func_adrs) {
+#if defined(TARGET_WIIU)
+                /* Skip TASK_GAME — crashes on texture/AFS access.
+                 * All other tasks run normally. */
+                if (i != TASK_GAME) {
+                    task_ptr->func_adrs(task_ptr);
+                }
+#else
+                task_ptr->func_adrs(task_ptr);
+#endif
+            }
+            break;
+
+        case 2:
+            task_ptr->condition = 1;
+            break;
+
+        case 3:
+            break;
         }
-        break;
-    case 2:
-        task_ptr->condition = 1;
-        break;
-    case 3:
-        break;
     }
 }
 
@@ -377,7 +296,34 @@ void njUserMain() {
     CPU_Rec[0] = 0;
     CPU_Rec[1] = 0;
 
+    Check_Replay_Status(0, Replay_Status[0]);
+    Check_Replay_Status(1, Replay_Status[1]);
+
     cpLoopTask();
+
+    if ((Game_pause != 0x81) && (Mode_Type == MODE_VERSUS) && (Play_Mode == 1)) {
+        if ((plw[0].wu.operator == 0) && (CPU_Rec[0] == 0) && (Replay_Status[0] == 1)) {
+            p1sw_0 = 0;
+
+            Check_Replay_Status(0, 1);
+
+            if (Debug_w[0x21]) {
+                flPrintColor(0xFFFFFFFF);
+                flPrintL(0x10, 0xA, "FAKE REC! PL1");
+            }
+        }
+
+        if ((plw[1].wu.operator == 0) && (CPU_Rec[1] == 0) && (Replay_Status[1] == 1)) {
+            p2sw_0 = 0;
+
+            Check_Replay_Status(1, 1);
+
+            if (Debug_w[0x21]) {
+                flPrintColor(0xFFFFFFFF);
+                flPrintL(0x10, 0xA, "FAKE REC!     PL2");
+            }
+        }
+    }
 }
 
 #if DEBUG
@@ -404,27 +350,72 @@ static void configure_slow_timer() {
 
 static void game_step_0() {
     AFS_RunServer();
+
     flSetRenderState(FLRENDER_BACKCOLOR, 0xFF000000);
+
+#if DEBUG
+    if (Debug_w[0x43]) {
+        flSetRenderState(FLRENDER_BACKCOLOR, 0xFF0000FF);
+    }
+#endif
+
     appSetupTempPriority();
     flPADGetALL();
     keyConvert();
 
+#if DEBUG
+    if (configuration.test.enabled) {
+        TestRunner_Prologue();
+    }
+
+    configure_slow_timer();
+#endif
+
     if ((Play_Mode != 3 && Play_Mode != 1) || (Game_pause != 0x81)) {
-        p1sw_1 = p1sw_0; p2sw_1 = p2sw_0;
-        p3sw_1 = p3sw_0; p4sw_1 = p4sw_0;
-        p1sw_0 = p1sw_buff; p2sw_0 = p2sw_buff;
-        p3sw_0 = p3sw_buff; p4sw_0 = p4sw_buff;
+        p1sw_1 = p1sw_0;
+        p2sw_1 = p2sw_0;
+        p3sw_1 = p3sw_0;
+        p4sw_1 = p4sw_0;
+        p1sw_0 = p1sw_buff;
+        p2sw_0 = p2sw_buff;
+        p3sw_0 = p3sw_buff;
+        p4sw_0 = p4sw_buff;
+
+        if ((task[TASK_MENU].condition == 1) && (Mode_Type == MODE_PARRY_TRAINING) && (Play_Mode == 1)) {
+            const u16 sw_buff = p2sw_0;
+            p2sw_0 = p1sw_0;
+            p1sw_0 = sw_buff;
+        }
     }
 
     appCopyKeyData();
+
     mpp_w.inGame = false;
 
     njUserMain();
+    seqsBeforeProcess();
+    njdp2d_draw();
+    seqsAfterProcess();
+
+    KnjFlush();
+    disp_effect_work();
+    flFlip(0);
 }
 
 static void game_step_1() {
     Interrupt_Timer += 1;
     Record_Timer += 1;
+
+    Scrn_Renew();
+    Irl_Family();
+    Irl_Scrn();
+    BGM_Server();
+
+#if DEBUG
+    if (configuration.test.enabled) {
+        TestRunner_Epilogue();
+    }
+#endif
 }
 
 static bool sdl_poll_helper() {
@@ -433,9 +424,13 @@ static bool sdl_poll_helper() {
 #else
     SDL_Event event;
     bool continue_running = true;
+
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) continue_running = false;
+        if (event.type == SDL_EVENT_QUIT) {
+            continue_running = false;
+        }
     }
+
     return continue_running;
 #endif
 }
@@ -458,7 +453,6 @@ static int loop() {
             if (Resources_Check()) {
                 dbg_msg("Resources found! Initializing...", 2);
                 initialize_game();
-                dbg_msg("INIT COMPLETE - entering game loop", 2);
                 phase = MAIN_PHASE_INITIALIZED;
             } else {
                 dbg_msg("ERROR: SF33RD.AFS not found!", 5);
@@ -485,21 +479,22 @@ static int loop() {
             loop_frame++;
 
 #if defined(__WIIU__)
-            if (loop_frame % 30 == 1) {
+            if (loop_frame % 60 == 1) {
                 char buf[80];
                 dbg_clear();
                 dbg_print("=== 3SX RUNNING ===");
                 snprintf(buf, sizeof(buf), "Frame: %d", loop_frame);
                 dbg_print(buf);
-                snprintf(buf, sizeof(buf), "INIT cond:%d r_no:[%d,%d]",
-                         task[TASK_INIT].condition,
-                         task[TASK_INIT].r_no[0],
-                         task[TASK_INIT].r_no[1]);
-                dbg_print(buf);
-                snprintf(buf, sizeof(buf), "RESET cond:%d",
-                         task[TASK_RESET].condition);
-                dbg_print(buf);
-                dbg_print("Calling game_step_0...");
+
+                for (int t = 0; t < 11; t++) {
+                    if (task[t].condition != 0 || task[t].func_adrs != NULL) {
+                        snprintf(buf, sizeof(buf), "Task[%d] cond:%d r:[%d,%d]",
+                                 t, task[t].condition,
+                                 task[t].r_no[0], task[t].r_no[1]);
+                        dbg_print(buf);
+                    }
+                }
+
                 dbg_flip();
             }
 #endif
@@ -525,18 +520,30 @@ s32 mppGetFavoritePlayerNumber() {
     s32 i;
     s32 max = 1;
     s32 num = 0;
+
 #if DEBUG
-    if (Debug_w[0x2D]) return Debug_w[0x2D] - 1;
-#endif
-    for (i = 0; i < 0x14; i++) {
-        if (max <= mpp_w.useChar[i]) { max = mpp_w.useChar[i]; num = i + 1; }
+    if (Debug_w[0x2D]) {
+        return Debug_w[0x2D] - 1;
     }
+#endif
+
+    for (i = 0; i < 0x14; i++) {
+        if (max <= mpp_w.useChar[i]) {
+            max = mpp_w.useChar[i];
+            num = i + 1;
+        }
+    }
+
     return num;
 }
 
+// Tasks
+
 void cpReadyTask(TaskID num, void* func_adrs) {
     struct _TASK* task_ptr = &task[num];
+
     memset(task_ptr, 0, sizeof(struct _TASK));
+
     task_ptr->func_adrs = func_adrs;
     task_ptr->condition = 2;
 }

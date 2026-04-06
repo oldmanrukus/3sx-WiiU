@@ -180,7 +180,7 @@ u32 flPS2GetSystemMemoryHandle(s32 len, s32 type) {
 
         if (handle == 0) {
             flPS2SystemError(0, "ERROR flPS2GetSystemMemoryHandle flps2etc.c");
-            while (1) {}
+            return 0;
         }
     }
 

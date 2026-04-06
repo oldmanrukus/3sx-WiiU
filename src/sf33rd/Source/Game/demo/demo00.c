@@ -208,7 +208,7 @@ void CAPLOGO_Init() {
 
     if (loadSize == 0) {
         flLogOut("カプロゴのテクスチャが読み込めませんでした。\n");
-        while (1) {}
+        return;
     }
 
     ppgSetupPalChunk(NULL, loadAdrs, loadSize, 0, 0, 1);
@@ -285,7 +285,7 @@ void Warning_Init() {
 
     if (loadSize == 0) {
         flLogOut("警告文のテクスチャが読み込めませんでした。\n");
-        while (1) {}
+        return;
     }
 
     ppgSetupPalChunk(&ppgWarPal, loadAdrs, loadSize, 0, 0, 1);

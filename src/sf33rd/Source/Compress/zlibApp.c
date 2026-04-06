@@ -21,7 +21,7 @@ void zlib_Free(void*, void*);
 
 void zlib_Initialize(void* tempAdrs, s32 tempSize) {
     if (tempAdrs == NULL) {
-        while (1) {}
+        return;
     }
 
     mmHeapInitialize(&zlib.mobj, tempAdrs, tempSize, ALIGN_UP(sizeof(_MEMMAN_CELL), 16), "- for zlib -");

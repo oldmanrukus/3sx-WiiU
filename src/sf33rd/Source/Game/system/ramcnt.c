@@ -10,10 +10,7 @@
 #include "sf33rd/Source/Common/MemMan.h"
 #include "sf33rd/Source/Game/debug/Debug.h"
 #include "sf33rd/Source/Game/rendering/texgroup.h"
-
-#define ERR_STOP                                                                                                       \
-    while (1) {}
-
+#define ERR_STOP ((void)0)
 RCKeyWork rckey_work[RCKEY_WORK_MAX];
 _MEMMAN_OBJ rckey_mmobj;
 s16 rckeyque[RCKEY_WORK_MAX];
