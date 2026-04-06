@@ -58,9 +58,7 @@ void Init_Task_1st(struct _TASK* task_ptr) {
     Pause_Family_On();
     Bg_TexInit();
 
-#if !defined(TARGET_WIIU)
     Scrscreen_Init();
-#endif
 
     effect_work_init();
     Max_vitality = 160;
@@ -129,9 +127,7 @@ void Init_Task_1st(struct _TASK* task_ptr) {
     Reset_Status[1] = 0;
     pulpul_stop();
 
-#if !defined(TARGET_WIIU)
     Warning_Init();
-#endif
 }
 
 void Setup_Difficult_V() {
@@ -170,7 +166,6 @@ void Init_Task_Aload(struct _TASK* task_ptr) {
     }
 }
 
-/// Adds a 30 frame delay before proceeding.
 void Init_Task_Wait(struct _TASK* task_ptr) {
     task_ptr->r_no[1] += 1;
 

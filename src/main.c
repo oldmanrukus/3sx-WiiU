@@ -262,8 +262,6 @@ static void cpLoopTask() {
         case 1:
             if (task_ptr->func_adrs) {
 #if defined(TARGET_WIIU)
-                /* Skip TASK_GAME — crashes on texture/AFS access.
-                 * All other tasks run normally. */
                 if (i != TASK_GAME) {
                     task_ptr->func_adrs(task_ptr);
                 }
