@@ -28,8 +28,10 @@ void fatal_error(const char* fmt, ...) {
     char buffer[1024];
     int written = vsnprintf(buffer, sizeof(buffer), fmt, args);
     if (written < 0) {
+        OSReport("[3SX] FATAL: (format failed)\n");
         OSFatal("Fatal error");
     } else {
+        OSReport("[3SX] FATAL: %s\n", buffer);
         OSFatal(buffer);
     }
     va_end(args);

@@ -1,4 +1,5 @@
 #include "port/sdl/sdl_game_renderer.h"
+#include <coreinit/debug.h>
 #include "common.h"
 #include "port/utils.h"
 #include "sf33rd/AcrSDK/ps2/flps2etc.h"
@@ -106,7 +107,7 @@ static void push_texture(SDL_Texture* texture) {
 
 static SDL_Texture* get_texture() {
     if (texture_count == 0) {
-        fatal_error("No textures to get");
+        OSReport("[3SX] WARN: No textures to get\n"); return NULL;
     }
 
     return textures[texture_count - 1];
@@ -304,7 +305,7 @@ void SDLGameRenderer_CreateTexture(unsigned int th) {
     int pitch = 0;
 
     if (surfaces[texture_index] != NULL) {
-        fatal_error("Overwriting an existing texture");
+        OSReport("[3SX] WARN: Overwriting texture\n"); return;
     }
 
     switch (fl_texture->format) {
@@ -324,7 +325,7 @@ void SDLGameRenderer_CreateTexture(unsigned int th) {
         break;
 
     default:
-        fatal_error("Unhandled pixel format: %d", fl_texture->format);
+        OSReport("[3SX] WARN: Unhandled tex format: %d\n", fl_texture->format); return;
         break;
     }
 
@@ -360,7 +361,7 @@ void SDLGameRenderer_CreatePalette(unsigned int ph) {
     size_t color_size = 0;
 
     if (palettes[palette_index] != NULL) {
-        fatal_error("Overwriting an existing palette");
+        OSReport("[3SX] WARN: Overwriting palette\n"); return;
     }
 
     switch (fl_palette->format) {
@@ -373,7 +374,7 @@ void SDLGameRenderer_CreatePalette(unsigned int ph) {
         break;
 
     default:
-        fatal_error("Unhandled pixel format: %d", fl_palette->format);
+        OSReport("[3SX] WARN: Unhandled pal format: %d\n", fl_palette->format); return;
         break;
     }
 
@@ -394,7 +395,7 @@ void SDLGameRenderer_CreatePalette(unsigned int ph) {
         break;
 
     default:
-        fatal_error("Unhandled palette dimensions: %dx%d", fl_palette->width, fl_palette->height);
+        OSReport("[3SX] WARN: Unhandled pal dims: %dx%d\n", fl_palette->width, fl_palette->height); return;
         break;
     }
 
@@ -467,7 +468,7 @@ static void draw_quad(const SDLGameRenderer_Vertex* vertices, bool textured) {
             task.vertices[i].tex_coord.y = vertices[i].tex_coord.t;
         }
 
-        read_rgba32_fcolor(vertices[i].color, &task.vertices[i].color);
+        read_rgba32_color(vertices[i].color, &task.vertices[i].color);
     }
 
     push_render_task(&task);
