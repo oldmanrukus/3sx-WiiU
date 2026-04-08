@@ -4,6 +4,7 @@
  */
 
 #include "sf33rd/Source/Game/io/gd3rd.h"
+#include <coreinit/debug.h>
 #include "common.h"
 #include "port/utils.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/cse.h"
@@ -192,6 +193,7 @@ s16 load_it_use_any_key(u16 fnum, u8 kokey, u8 group) {
 }
 
 s32 load_it_use_this_key(u16 fnum, s16 key) {
+    OSReport("[3SX] load_it_use_this_key: fnum=%d key=%d\n", fnum, key);
     REQ req;
 
     req.fnum = fnum;
@@ -201,8 +203,10 @@ s32 load_it_use_this_key(u16 fnum, s16 key) {
     }
 
     req.size = req.info.size;
+    OSReport("[3SX]   size=%u sect=%u addr=0x%08X\n", req.size, fsCalSectorSize(req.size), (unsigned)Get_ramcnt_address(key));
     req.sect = fsCalSectorSize(req.size);
     s32 err = fsFileReadSync(&req, req.sect, (void*)Get_ramcnt_address(key));
+    OSReport("[3SX]   read done, err=%d\n", err);
     fsClose(&req);
     Set_size_data_ramcnt_key(key, req.size);
     return err;

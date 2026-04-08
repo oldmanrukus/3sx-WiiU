@@ -61,9 +61,7 @@ void Init_Task_1st(struct _TASK* task_ptr) {
     Init_load_on_memory_data();
     Pause_Family_On();
     Bg_TexInit();
-#if !defined(TARGET_WIIU)
     Scrscreen_Init();
-#endif
     effect_work_init();
     Max_vitality = 160;
     reset_NG_flag = 0;
