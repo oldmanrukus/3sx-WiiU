@@ -30,20 +30,26 @@ if(CYGPATH_EXE)
                     OUTPUT_VARIABLE INC_SDK OUTPUT_STRIP_TRAILING_WHITESPACE)
     execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/portlibs/ppc/include"
                     OUTPUT_VARIABLE INC_PORTLIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/portlibs/wiiu/include"
+                    OUTPUT_VARIABLE INC_PORTLIBS_WIIU OUTPUT_STRIP_TRAILING_WHITESPACE)
     execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/wut/include"
                     OUTPUT_VARIABLE INC_WUT OUTPUT_STRIP_TRAILING_WHITESPACE)
     execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/devkitPPC/powerpc-eabi/include"
                     OUTPUT_VARIABLE INC_DKP OUTPUT_STRIP_TRAILING_WHITESPACE)
     execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/portlibs/ppc/lib/libz.a"
                     OUTPUT_VARIABLE ZLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${CYGPATH_EXE} -m "$ENV{DEVKITPRO}/portlibs/wiiu/lib/libSDL2.a"
+                    OUTPUT_VARIABLE SDL2_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
     set(INC_SRC      "${PROJECT_SOURCE_DIR}/src")
     set(INC_INCLUDE  "${PROJECT_SOURCE_DIR}/include")
     set(INC_SDK      "${PROJECT_SOURCE_DIR}/include/sdk")
     set(INC_PORTLIBS "$ENV{DEVKITPRO}/portlibs/ppc/include")
+    set(INC_PORTLIBS_WIIU "$ENV{DEVKITPRO}/portlibs/wiiu/include")
     set(INC_WUT      "$ENV{DEVKITPRO}/wut/include")
     set(INC_DKP      "$ENV{DEVKITPRO}/devkitPPC/powerpc-eabi/include")
     set(ZLIB_PATH    "$ENV{DEVKITPRO}/portlibs/ppc/lib/libz.a")
+    set(SDL2_PATH    "$ENV{DEVKITPRO}/portlibs/wiiu/lib/libSDL2.a")
 endif()
 
 set(RAW_INCLUDE_FLAGS
@@ -51,6 +57,7 @@ set(RAW_INCLUDE_FLAGS
     "-I${INC_INCLUDE}"
     "-I${INC_SDK}"
     "-I${INC_PORTLIBS}"
+    "-I${INC_PORTLIBS_WIIU}"
     "-isystem${INC_WUT}"
     "-isystem${INC_DKP}"
 )
@@ -140,15 +147,19 @@ target_compile_options(3sx-wiiu PRIVATE
     ${RAW_INCLUDE_FLAGS}
 )
 
-# Import zlib as a proper library target — avoids MSYS2 path issues
-# and ensures correct link order (after 3sx-core that references it)
+# Import zlib as a proper library target
 add_library(zlib_imported STATIC IMPORTED)
 set_target_properties(zlib_imported PROPERTIES IMPORTED_LOCATION "${ZLIB_PATH}")
+
+# Import SDL2 as a proper library target
+add_library(sdl2_imported STATIC IMPORTED)
+set_target_properties(sdl2_imported PROPERTIES IMPORTED_LOCATION "${SDL2_PATH}")
 
 set(WUT_ROOT $ENV{DEVKITPRO}/wut)
 
 target_link_libraries(3sx-wiiu PRIVATE
     3sx-core
+    sdl2_imported
     wut
     zlib_imported
     m

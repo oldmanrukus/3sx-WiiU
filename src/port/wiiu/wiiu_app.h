@@ -1,6 +1,6 @@
 /**
  * @file wiiu_app.h
- * @brief Wii U application lifecycle — replaces sdl_app.h
+ * @brief Wii U application lifecycle — SDL2 mode
  */
 #ifndef WIIU_APP_H
 #define WIIU_APP_H
@@ -9,25 +9,32 @@
 
 #define TARGET_FPS 59.59949
 
-/* Wii U native functions */
-int  WiiUApp_PreInit(void);
-int  WiiUApp_FullInit(void);
+int WiiUApp_PreInit(void);
+int WiiUApp_FullInit(void);
 void WiiUApp_Quit(void);
+
+/// @brief Process Wii U ProcUI events + HOME menu.
+/// @return true if the main loop should continue, false to exit.
 bool WiiUApp_PollEvents(void);
+
 void WiiUApp_BeginFrame(void);
 void WiiUApp_EndFrame(void);
 void WiiUApp_Exit(void);
-
-/* Tell wiiu_app that GX2 was already initialized (e.g. by debug_flash) */
 void WiiUApp_SetGX2Initialized(void);
 
-/* SDL-named functions (implemented in sdl_wrappers.c) */
-int  SDLApp_PreInit(void);
-int  SDLApp_FullInit(void);
-void SDLApp_Quit(void);
-bool SDLApp_PollEvents(void);
-void SDLApp_BeginFrame(void);
-void SDLApp_EndFrame(void);
-void SDLApp_Exit(void);
+/* SDL2 accessors for renderer backend */
+struct SDL_Window;
+struct SDL_Renderer;
+struct SDL_Window* WiiUApp_GetWindow(void);
+struct SDL_Renderer* WiiUApp_GetRenderer(void);
+
+/* Aliases so main.c can call SDLApp_* unchanged */
+#define SDLApp_PreInit    WiiUApp_PreInit
+#define SDLApp_FullInit   WiiUApp_FullInit
+#define SDLApp_Quit       WiiUApp_Quit
+#define SDLApp_PollEvents WiiUApp_PollEvents
+#define SDLApp_BeginFrame WiiUApp_BeginFrame
+#define SDLApp_EndFrame   WiiUApp_EndFrame
+#define SDLApp_Exit       WiiUApp_Exit
 
 #endif

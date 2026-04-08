@@ -497,7 +497,7 @@ static int loop() {
             SDLApp_PreInit();
 
 #if defined(__WIIU__)
-            dbg_init();
+            /* dbg_init(); */ /* disabled — using SDL2 now */
             dbg_msg("PreInit complete", 2);
 #endif
 
