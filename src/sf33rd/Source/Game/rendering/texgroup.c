@@ -359,6 +359,9 @@ void reservMemKeySelObj() {
 }
 
 void checkSelObjFileLoaded() {
+#if defined(TARGET_WIIU)
+    return;
+#endif
     const TexGroupData* bsd;
     TEX_GRP_LD* lds;
     uintptr_t ldadr;
@@ -375,14 +378,8 @@ void checkSelObjFileLoaded() {
     }
 
     lds = &texgrplds[obj_group_table[0x69E0]];
-
-    while (1) {
-        rnum = load_it_use_this_key(bsd->apfn, lds->key);
-
-        if (rnum != 0) {
-            break;
-        }
-    }
+    rnum = load_it_use_this_key(bsd->apfn, lds->key);
+    if (rnum == 0) return;
 
     ldadr = Get_ramcnt_address(lds->key);
     lds->texture_table = ldadr + bsd->to_tex;

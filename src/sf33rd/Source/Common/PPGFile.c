@@ -13,10 +13,9 @@
 #include <SDL3/SDL.h>
 
 #define MAGIC_TO_INT(str) ((str[0] << 0x18) | (str[1] << 0x10) | (str[2] << 0x8) | (str[3]))
-#define REVERT_U32(val)                                                                                                \
-    (((val & 0xFF) << 0x18) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 0x18) & 0xFF))
+#define REVERT_U32(val) (((val & 0xFF) << 0x18) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 0x18) & 0xFF))
 #define REVERT_U16(val) (((val >> 8) & 0xFF) | ((val & 0xFF) << 8))
-#define REVERT_U8(val) (((val << 4) & 0xF0) | ((val >> 4) & 0xF))
+#define REVERT_U8(val)  (((val << 4) & 0xF0) | ((val >> 4) & 0xF))
 
 #define CODE_0(val) ((val & 0xF0) << 8) + ((val & 0xF) << 4)
 #define CODE_1(val) ((val & 0x38) << 0xA) + ((val & 7) << 5)

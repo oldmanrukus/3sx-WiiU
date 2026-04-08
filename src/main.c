@@ -22,17 +22,22 @@
 #include "sf33rd/Source/Game/effect/effect.h"
 #include "sf33rd/Source/Game/engine/plcnt.h"
 #include "sf33rd/Source/Game/engine/workuser.h"
+#include "sf33rd/Source/Game/game.h"
 #include "sf33rd/Source/Game/init3rd.h"
 #include "sf33rd/Source/Game/io/gd3rd.h"
 #include "sf33rd/Source/Game/io/ioconv.h"
+#include "sf33rd/Source/Game/io/pulpul.h"
 #include "sf33rd/Source/Game/menu/menu.h"
 #include "sf33rd/Source/Game/rendering/color3rd.h"
 #include "sf33rd/Source/Game/rendering/dc_ghost.h"
 #include "sf33rd/Source/Game/rendering/mtrans.h"
 #include "sf33rd/Source/Game/rendering/texcash.h"
+#include "sf33rd/Source/Game/rendering/texgroup.h"
 #include "sf33rd/Source/Game/sound/sound3rd.h"
+#include "sf33rd/Source/Game/sound/se.h"
 #include "sf33rd/Source/Game/stage/bg.h"
 #include "sf33rd/Source/Game/system/ramcnt.h"
+#include "sf33rd/Source/Game/system/reset.h"
 #include "sf33rd/Source/Game/system/sys_sub.h"
 #include "sf33rd/Source/Game/system/sys_sub2.h"
 #include "sf33rd/Source/Game/system/work_sys.h"
@@ -59,7 +64,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-/* Wii U OSScreen debug */
+/* ======================================
+ * Wii U OSScreen debug
+ * ====================================== */
 #if defined(__WIIU__)
 #include <coreinit/time.h>
 #include <coreinit/thread.h>
@@ -150,6 +157,58 @@ static void set_netplay_params() {}
 
 static void cpInitTask() {
     memset(&task, 0, sizeof(task));
+}
+
+/* ======================================
+ * Game_Task_wiiu
+ *
+ * Wii U version of Game_Task. Runs the full game engine
+ * framework (texture cache, effects, sound, LDREQ queue)
+ * but skips Loop_Demo which crashes on PPG data loading.
+ * Once GX2 renderer is working, this can be replaced with
+ * the real Game_Task.
+ * ====================================== */
+void Game_Task_wiiu(struct _TASK* task_ptr) {
+    s16 ix;
+    s16 ff;
+
+    if (!No_Trans) {
+        init_color_trans_req();
+    }
+
+    ff = sysFF;
+
+    for (ix = 0; ix < ff; ix++) {
+        if (!No_Trans) {
+            if (ix == ff - 1) {
+                No_Trans = 0;
+            } else {
+                No_Trans = 1;
+            }
+        }
+
+        Play_Game = 0;
+
+        if (Game_pause != 0x81) {
+            system_timer += 1;
+        }
+
+        init_texcash_before_process();
+        seqsBeforeProcess();
+
+        /* Skip Loop_Demo / Game dispatch — all demo cases crash
+         * on PPG texture loading without a real renderer.
+         * The game engine framework still runs below. */
+
+        seqsAfterProcess();
+        texture_cash_update();
+        move_pulpul_work();
+        Check_LDREQ_Queue();
+    }
+
+    Check_Check_Screen();
+    Check_Pos_BG();
+    Disp_Sound_Code();
 }
 
 static void njUserInit() {
@@ -261,13 +320,7 @@ static void cpLoopTask() {
         switch (task_ptr->condition) {
         case 1:
             if (task_ptr->func_adrs) {
-#if defined(TARGET_WIIU)
-                if (i != TASK_GAME) {
-                    task_ptr->func_adrs(task_ptr);
-                }
-#else
                 task_ptr->func_adrs(task_ptr);
-#endif
             }
             break;
 
@@ -477,7 +530,7 @@ static int loop() {
             loop_frame++;
 
 #if defined(__WIIU__)
-            if (loop_frame % 60 == 1) {
+            if (loop_frame % 120 == 1) {
                 char buf[80];
                 dbg_clear();
                 dbg_print("=== 3SX RUNNING ===");
@@ -493,6 +546,11 @@ static int loop() {
                     }
                 }
 
+                snprintf(buf, sizeof(buf), "G_No:[%d,%d] sys_timer:%lu",
+                         G_No[0], G_No[1], (unsigned long)system_timer);
+                dbg_print(buf);
+                dbg_print("");
+                dbg_print("Engine running. Awaiting GX2 renderer.");
                 dbg_flip();
             }
 #endif

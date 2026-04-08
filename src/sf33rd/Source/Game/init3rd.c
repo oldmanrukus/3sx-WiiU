@@ -38,6 +38,10 @@ void Init_Task_2nd(struct _TASK* task_ptr);
 void Init_Task_End(struct _TASK* task_ptr);
 void Setup_Difficult_V();
 
+#if defined(TARGET_WIIU)
+extern void Game_Task_wiiu(struct _TASK* task_ptr);
+#endif
+
 void Init_Task(struct _TASK* task_ptr) {
     void (*Main_Jmp_Tbl[])() = { Init_Task_1st, Init_Task_Aload, Init_Task_2nd, Init_Task_End };
 
@@ -57,9 +61,9 @@ void Init_Task_1st(struct _TASK* task_ptr) {
     Init_load_on_memory_data();
     Pause_Family_On();
     Bg_TexInit();
-
+#if !defined(TARGET_WIIU)
     Scrscreen_Init();
-
+#endif
     effect_work_init();
     Max_vitality = 160;
     reset_NG_flag = 0;
@@ -126,8 +130,9 @@ void Init_Task_1st(struct _TASK* task_ptr) {
     Reset_Status[0] = 0;
     Reset_Status[1] = 0;
     pulpul_stop();
-
+#if !defined(TARGET_WIIU)
     Warning_Init();
+#endif
 }
 
 void Setup_Difficult_V() {
@@ -188,7 +193,11 @@ void Init_Task_2nd(struct _TASK* task_ptr) {
 }
 
 void Init_Task_End(struct _TASK* task_ptr) {
+#if defined(TARGET_WIIU)
+    cpReadyTask(TASK_GAME, Game_Task_wiiu);
+#else
     cpReadyTask(TASK_GAME, Game_Task);
+#endif
     task_ptr->r_no[0] += 1;
     task_ptr->r_no[1] = 0;
     G_No[0] = 1;

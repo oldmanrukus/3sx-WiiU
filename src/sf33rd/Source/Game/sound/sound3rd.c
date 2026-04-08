@@ -164,6 +164,9 @@ s32 cseMemMapInit(void* pSpuMemMap) {
 }
 
 void checkAdxFileLoaded() {
+#if defined(TARGET_WIIU)
+    return;
+#endif
     u8* adr;
     s16 key;
     u16 fnum;
@@ -177,10 +180,8 @@ void checkAdxFileLoaded() {
     } else {
         fnum = 90;
     }
-
-    do {
-        key = load_it_use_any_key(fnum, 21, 0);
-    } while (key == 0);
+    key = load_it_use_any_key(fnum, 21, 0);
+    if (key == 0) return;
 
     adr = (u8*)Get_ramcnt_address(key);
     ppgSetupCmpChunk(adr, 0, adx_VS);
