@@ -359,9 +359,6 @@ void reservMemKeySelObj() {
 }
 
 void checkSelObjFileLoaded() {
-#if defined(TARGET_WIIU)
-    return;
-#endif
     const TexGroupData* bsd;
     TEX_GRP_LD* lds;
     uintptr_t ldadr;

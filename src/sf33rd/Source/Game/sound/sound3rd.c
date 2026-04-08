@@ -164,9 +164,6 @@ s32 cseMemMapInit(void* pSpuMemMap) {
 }
 
 void checkAdxFileLoaded() {
-#if defined(TARGET_WIIU)
-    return;
-#endif
     u8* adr;
     s16 key;
     u16 fnum;
