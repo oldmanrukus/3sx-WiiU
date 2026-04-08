@@ -289,6 +289,25 @@ static inline bool SDL_RemovePath(const char* path) {
 #define SDL_MAX_SINT16 INT16_MAX
 #endif
 
+/* SDL3 uses SDL_PixelFormat as a Uint32 enum for format constants.
+ * SDL2 has SDL_PixelFormat as a struct. The game code declares:
+ *   SDL_PixelFormat pixel_format = SDL_PIXELFORMAT_UNKNOWN;
+ * Fix: patch the source to use Uint32 directly, or use this workaround.
+ * We can't redefine SDL_PixelFormat since it's a typedef in SDL2.
+ * Instead, we'll rely on the source being compiled with our -Wno flags. */
+
+/* SDL3: SDL_RenderRect(renderer, rect) — draws outline
+ * SDL2: SDL_RenderDrawRectF(renderer, rect) */
+#define SDL_RenderRect(r, rect) SDL_RenderDrawRectF(r, rect)
+
+/* SDL3: SDL_RenderTexture(renderer, tex, src, dst)
+ * SDL2: SDL_RenderCopyF(renderer, tex, src, dst) for FRect dst
+ *        SDL_RenderCopy(renderer, tex, src, dst) for Rect dst */
+#define SDL_RenderTexture(r, tex, src, dst) SDL_RenderCopy(r, tex, src, dst)
+
+/* SDL3: SDL_Mutex (capitalized), SDL2: SDL_mutex (lowercase) */
+typedef SDL_mutex SDL_Mutex;
+
 /* SDL2 may not have SDL_isdigit/SDL_isspace as macros */
 #ifndef SDL_isdigit
 #define SDL_isdigit(c) isdigit((unsigned char)(c))
@@ -313,8 +332,4 @@ static inline bool SDL_RemovePath(const char* path) {
 #endif
 #endif
 
-/* SDL3 uses SDL_Mutex, SDL2 uses SDL_mutex */
-#ifndef SDL_Mutex
-typedef SDL_mutex SDL_Mutex;
-#endif
 #endif /* SDL_COMPAT_WIIU_H */

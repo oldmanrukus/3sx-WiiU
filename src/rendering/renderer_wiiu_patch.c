@@ -13,7 +13,7 @@
 #elif defined(TARGET_3DS)
 #include "port/ctr/ctr_game_renderer.h"
 #elif defined(TARGET_WIIU)
-#include "port/wiiu/wiiu_game_renderer.h"
+#include "port/sdl/sdl_game_renderer.h"
 #else
 #include "port/sdl/sdl_game_renderer.h"
 #endif
@@ -24,7 +24,7 @@ void Renderer_CreateTexture(unsigned int th) {
 #elif defined(TARGET_3DS)
     CTRRenderer_CreateTexture(th);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_CreateTexture(th);
+    SDLGameRenderer_CreateTexture(th);
 #else
     SDLGameRenderer_CreateTexture(th);
 #endif
@@ -36,7 +36,7 @@ void Renderer_DestroyTexture(unsigned int texture_handle) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DestroyTexture(texture_handle);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DestroyTexture(texture_handle);
+    SDLGameRenderer_DestroyTexture(texture_handle);
 #else
     SDLGameRenderer_DestroyTexture(texture_handle);
 #endif
@@ -48,7 +48,7 @@ void Renderer_UnlockTexture(unsigned int th) {
 #elif defined(TARGET_3DS)
     CTRRenderer_UnlockTexture(th);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_UnlockTexture(th);
+    SDLGameRenderer_UnlockTexture(th);
 #else
     SDLGameRenderer_UnlockTexture(th);
 #endif
@@ -60,7 +60,7 @@ void Renderer_CreatePalette(unsigned int ph) {
 #elif defined(TARGET_3DS)
     CTRRenderer_CreatePalette(ph);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_CreatePalette(ph);
+    SDLGameRenderer_CreatePalette(ph);
 #else
     SDLGameRenderer_CreatePalette(ph);
 #endif
@@ -72,7 +72,7 @@ void Renderer_DestroyPalette(unsigned int palette_handle) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DestroyPalette(palette_handle);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DestroyPalette(palette_handle);
+    SDLGameRenderer_DestroyPalette(palette_handle);
 #else
     SDLGameRenderer_DestroyPalette(palette_handle);
 #endif
@@ -84,7 +84,7 @@ void Renderer_UnlockPalette(unsigned int th) {
 #elif defined(TARGET_3DS)
     CTRRenderer_UnlockPalette(th);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_UnlockPalette(th);
+    SDLGameRenderer_UnlockPalette(th);
 #else
     SDLGameRenderer_UnlockPalette(th);
 #endif
@@ -96,7 +96,7 @@ void Renderer_SetTexture(unsigned int th) {
 #elif defined(TARGET_3DS)
     CTRRenderer_SetTexture(th);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_SetTexture(th);
+    SDLGameRenderer_SetTexture(th);
 #else
     SDLGameRenderer_SetTexture(th);
 #endif
@@ -108,7 +108,7 @@ void Renderer_DrawTexturedQuad(const Sprite* sprite, unsigned int color) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DrawTexturedQuad(sprite, color);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DrawTexturedQuad(sprite, color);
+    SDLGameRenderer_DrawTexturedQuad(sprite, color);
 #else
     SDLGameRenderer_DrawTexturedQuad(sprite, color);
 #endif
@@ -120,7 +120,7 @@ void Renderer_DrawSprite(const Sprite* sprite, unsigned int color) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DrawSprite(sprite, color);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DrawSprite(sprite, color);
+    SDLGameRenderer_DrawSprite(sprite, color);
 #else
     SDLGameRenderer_DrawSprite(sprite, color);
 #endif
@@ -132,7 +132,7 @@ void Renderer_DrawSprite2(const Sprite2* sprite2) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DrawSprite2(sprite2);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DrawSprite2(sprite2);
+    SDLGameRenderer_DrawSprite2(sprite2);
 #else
     SDLGameRenderer_DrawSprite2(sprite2);
 #endif
@@ -144,7 +144,7 @@ void Renderer_DrawSolidQuad(const Quad* quad, unsigned int color) {
 #elif defined(TARGET_3DS)
     CTRRenderer_DrawSolidQuad(quad, color);
 #elif defined(TARGET_WIIU)
-    WiiUGameRenderer_DrawSolidQuad(quad, color);
+    SDLGameRenderer_DrawSolidQuad(quad, color);
 #else
     SDLGameRenderer_DrawSolidQuad(quad, color);
 #endif

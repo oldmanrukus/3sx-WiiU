@@ -1,8 +1,6 @@
 /**
- * @file wiiu_game_renderer.c
  * @brief Wii U game renderer — SAFE NO-OP version
  */
-#include "port/wiiu/wiiu_game_renderer.h"
 #include "common.h"
 #include "sf33rd/AcrSDK/ps2/flps2etc.h"
 #include "sf33rd/AcrSDK/ps2/flps2render.h"

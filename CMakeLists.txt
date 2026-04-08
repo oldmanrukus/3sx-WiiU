@@ -81,6 +81,7 @@ file(GLOB_RECURSE GAME_SRC
 
 list(FILTER GAME_SRC EXCLUDE REGEX ".*/src/port/config/keymap\\.c$")
 list(FILTER GAME_SRC EXCLUDE REGEX ".*/src/port/sdl/.*")
+list(FILTER GAME_SRC EXCLUDE REGEX ".*/wiiu_game_renderer\.c$")
 
 list(APPEND GAME_SRC
     src/port/io/afs_wiiu.c
@@ -90,6 +91,7 @@ list(APPEND GAME_SRC
     src/port/paths_wiiu.c
     src/port/resources_wiiu.c
     src/port/utils.c
+    src/port/sdl/sdl_game_renderer.c
 )
 
 # =============================================================================

@@ -169,6 +169,8 @@ static void cpInitTask() {
  * the real Game_Task.
  * ====================================== */
 void Game_Task_wiiu(struct _TASK* task_ptr) {
+    extern void Loop_Demo(struct _TASK* task_ptr);
+    extern void Wait_Auto_Load(struct _TASK* task_ptr);
     s16 ix;
     s16 ff;
 
@@ -196,9 +198,11 @@ void Game_Task_wiiu(struct _TASK* task_ptr) {
         init_texcash_before_process();
         seqsBeforeProcess();
 
-        /* Skip Loop_Demo / Game dispatch — all demo cases crash
-         * on PPG texture loading without a real renderer.
-         * The game engine framework still runs below. */
+        /* Dispatch game logic */
+        if (nowSoftReset() == 0) {
+            void (*Main_Jmp_Tbl[3])(struct _TASK*) = { Wait_Auto_Load, Loop_Demo, Game };
+            Main_Jmp_Tbl[G_No[0]](task_ptr);
+        }
 
         seqsAfterProcess();
         texture_cash_update();

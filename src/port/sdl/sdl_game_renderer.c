@@ -300,7 +300,7 @@ void SDLGameRenderer_CreateTexture(unsigned int th) {
     const int texture_index = LO_16_BITS(th) - 1;
     const FLTexture* fl_texture = &flTexture[texture_index];
     const void* pixels = flPS2GetSystemBuffAdrs(fl_texture->mem_handle);
-    SDL_PixelFormat pixel_format = SDL_PIXELFORMAT_UNKNOWN;
+    Uint32 pixel_format = SDL_PIXELFORMAT_UNKNOWN;
     int pitch = 0;
 
     if (surfaces[texture_index] != NULL) {
@@ -328,7 +328,7 @@ void SDLGameRenderer_CreateTexture(unsigned int th) {
         break;
     }
 
-    const SDL_Surface* surface =
+    SDL_Surface* surface =
         SDL_CreateSurfaceFrom(fl_texture->width, fl_texture->height, pixel_format, pixels, pitch);
     surfaces[texture_index] = surface;
 }
@@ -423,7 +423,7 @@ void SDLGameRenderer_DestroyPalette(unsigned int palette_handle) {
 
 void SDLGameRenderer_SetTexture(unsigned int th) {
     const int texture_handle = LO_16_BITS(th);
-    const SDL_Surface* surface = surfaces[texture_handle - 1];
+    SDL_Surface* surface = surfaces[texture_handle - 1];
     const int palette_handle = HI_16_BITS(th);
     const SDL_Palette* palette = palette_handle != 0 ? palettes[palette_handle - 1] : NULL;
 

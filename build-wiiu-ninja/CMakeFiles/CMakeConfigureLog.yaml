@@ -41,8 +41,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-8haRPa"
-      binary: "/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-8haRPa"
+      source: "/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-ubONps"
+      binary: "/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-ubONps"
     cmakeVariables:
       CMAKE_C_FLAGS: "-mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU"
       CMAKE_C_FLAGS_DEBUG: "-g"
@@ -51,10 +51,10 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-8haRPa'
+        Change Dir: '/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-ubONps'
         
-        Run Build Command(s): /usr/bin/ninja.exe -v cmTC_282e6
-        [1/2] /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc   -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU    -v -o CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
+        Run Build Command(s): /usr/bin/ninja.exe -v cmTC_d1b96
+        [1/2] /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc   -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU    -v -o CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
         Using built-in specs.
         COLLECT_GCC=C:\\devkitPro\\devkitPPC\\bin\\powerpc-eabi-gcc.exe
         Target: powerpc-eabi
@@ -62,8 +62,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib zstd
         gcc version 15.2.0 (devkitPPC) 
-        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/'
-         C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/cc1.exe -quiet -v -iprefix C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ -isysroot C:/devkitPro/devkitPPC/bin/../powerpc-eabi -D __WIIU__ -D __WUT__ -D TARGET_WIIU C:/devkitPro/msys2/usr/share/cmake/Modules/CMakeCCompilerABI.c -mcall-sysv -quiet -dumpdir CMakeFiles/cmTC_282e6.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mcpu=750 -meabi -mhard-float -version -ffunction-sections -fdata-sections -o C:\\devkitPro\\msys2\\tmp\\ccEP4dr5.s
+        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/'
+         C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/cc1.exe -quiet -v -iprefix C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ -isysroot C:/devkitPro/devkitPPC/bin/../powerpc-eabi -D __WIIU__ -D __WUT__ -D TARGET_WIIU C:/devkitPro/msys2/usr/share/cmake/Modules/CMakeCCompilerABI.c -mcall-sysv -quiet -dumpdir CMakeFiles/cmTC_d1b96.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mcpu=750 -meabi -mhard-float -version -ffunction-sections -fdata-sections -o C:\\devkitPro\\msys2\\tmp\\ccBiCkql.s
         GNU C23 (devkitPPC) version 15.2.0 (powerpc-eabi)
         	compiled by GNU C version 13.3.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.18-GMP
         
@@ -80,12 +80,12 @@ events:
          C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/include
         End of search list.
         Compiler executable checksum: 3aa6878e7837294918842c1dee8f2e36
-        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/'
-         C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/as.exe -mppc -many -mbig -o CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj C:\\devkitPro\\msys2\\tmp\\ccEP4dr5.s
+        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/'
+         C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/as.exe -mppc -many -mbig -o CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj C:\\devkitPro\\msys2\\tmp\\ccBiCkql.s
         COMPILER_PATH=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/;C:/devkitPro/devkitPPC/bin/../libexec/gcc/;C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/
         LIBRARY_PATH=C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/;C:/devkitPro/devkitPPC/bin/../lib/gcc/;C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib/;C:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib/
-        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.'
-        [2/2] : && /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU -L/opt/devkitpro/wut/lib -L/opt/devkitpro/devkitPPC/lib -L/opt/devkitpro/devkitPPC/powerpc-eabi/lib -specs=/opt/devkitpro/wut/share/wut.specs -Wl,--gc-sections -v CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -o cmTC_282e6   && :
+        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.'
+        [2/2] : && /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU -L/opt/devkitpro/wut/lib -L/opt/devkitpro/devkitPPC/lib -L/opt/devkitpro/devkitPPC/powerpc-eabi/lib -specs=/opt/devkitpro/wut/share/wut.specs -Wl,--gc-sections -v CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -o cmTC_d1b96   && :
         Using built-in specs.
         Reading specs from C:/devkitPro/wut/share/wut.specs
         rename spec link to old_link
@@ -98,8 +98,8 @@ events:
         gcc version 15.2.0 (devkitPPC) 
         COMPILER_PATH=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/;C:/devkitPro/devkitPPC/bin/../libexec/gcc/;C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/
         LIBRARY_PATH=C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/;C:/devkitPro/devkitPPC/bin/../lib/gcc/;C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib/;C:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib/
-        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_282e6' '-dumpdir' 'cmTC_282e6.'
-         C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/collect2.exe -plugin C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/liblto_plugin.dll -plugin-opt=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\devkitPro\\msys2\\tmp\\ccRfdCjb.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lsysbase -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc --sysroot=C:/devkitPro/devkitPPC/bin/../powerpc-eabi --eh-frame-hdr -V -dn -Bstatic -T C:/devkitPro/wut/share/wut.ld --gc-sections --emit-relocs --no-eh-frame-hdr -z nocopyreloc -o cmTC_282e6 C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o -LC:/devkitPro/wut/lib -LC:/devkitPro/devkitPPC/lib -LC:/devkitPro/devkitPPC/powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0 -LC:/devkitPro/devkitPPC/bin/../lib/gcc -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib --gc-sections CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -lgcc --start-group -lsysbase -lc --end-group -lgcc C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtend.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrtn.o
+        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_d1b96' '-dumpdir' 'cmTC_d1b96.'
+         C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/collect2.exe -plugin C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/liblto_plugin.dll -plugin-opt=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\devkitPro\\msys2\\tmp\\cc15HRkv.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lsysbase -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc --sysroot=C:/devkitPro/devkitPPC/bin/../powerpc-eabi --eh-frame-hdr -V -dn -Bstatic -T C:/devkitPro/wut/share/wut.ld --gc-sections --emit-relocs --no-eh-frame-hdr -z nocopyreloc -o cmTC_d1b96 C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o -LC:/devkitPro/wut/lib -LC:/devkitPro/devkitPPC/lib -LC:/devkitPro/devkitPPC/powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0 -LC:/devkitPro/devkitPPC/bin/../lib/gcc -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib --gc-sections CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -lgcc --start-group -lsysbase -lc --end-group -lgcc C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtend.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrtn.o
         GNU ld (GNU Binutils) 2.45.1
           Supported emulations:
            elf32ppc
@@ -111,7 +111,7 @@ events:
            elf64ppc
            elf64lppc
         C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/ld.exe: warning: cannot find entry symbol __rpx_start; defaulting to 02000000
-        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_282e6' '-dumpdir' 'cmTC_282e6.'
+        COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_d1b96' '-dumpdir' 'cmTC_d1b96.'
         
       exitCode: 0
   -
@@ -144,10 +144,10 @@ events:
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
-        ignore line: [Change Dir: '/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-8haRPa']
+        ignore line: [Change Dir: '/home/billy/3sx/build-wiiu-ninja/CMakeFiles/CMakeScratch/TryCompile-ubONps']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/ninja.exe -v cmTC_282e6]
-        ignore line: [[1/2] /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc   -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU    -v -o CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Run Build Command(s): /usr/bin/ninja.exe -v cmTC_d1b96]
+        ignore line: [[1/2] /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc   -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU    -v -o CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=C:\\devkitPro\\devkitPPC\\bin\\powerpc-eabi-gcc.exe]
         ignore line: [Target: powerpc-eabi]
@@ -155,8 +155,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib zstd]
         ignore line: [gcc version 15.2.0 (devkitPPC) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/']
-        ignore line: [ C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/cc1.exe -quiet -v -iprefix C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ -isysroot C:/devkitPro/devkitPPC/bin/../powerpc-eabi -D __WIIU__ -D __WUT__ -D TARGET_WIIU C:/devkitPro/msys2/usr/share/cmake/Modules/CMakeCCompilerABI.c -mcall-sysv -quiet -dumpdir CMakeFiles/cmTC_282e6.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mcpu=750 -meabi -mhard-float -version -ffunction-sections -fdata-sections -o C:\\devkitPro\\msys2\\tmp\\ccEP4dr5.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/']
+        ignore line: [ C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/cc1.exe -quiet -v -iprefix C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ -isysroot C:/devkitPro/devkitPPC/bin/../powerpc-eabi -D __WIIU__ -D __WUT__ -D TARGET_WIIU C:/devkitPro/msys2/usr/share/cmake/Modules/CMakeCCompilerABI.c -mcall-sysv -quiet -dumpdir CMakeFiles/cmTC_d1b96.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mcpu=750 -meabi -mhard-float -version -ffunction-sections -fdata-sections -o C:\\devkitPro\\msys2\\tmp\\ccBiCkql.s]
         ignore line: [GNU C23 (devkitPPC) version 15.2.0 (powerpc-eabi)]
         ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.18-GMP]
         ignore line: []
@@ -173,8 +173,8 @@ events:
         ignore line: [ C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: 3aa6878e7837294918842c1dee8f2e36]
-        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/']
-        ignore line: [ C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/as.exe -mppc -many -mbig -o CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj C:\\devkitPro\\msys2\\tmp\\ccEP4dr5.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/']
+        ignore line: [ C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/as.exe -mppc -many -mbig -o CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj C:\\devkitPro\\msys2\\tmp\\ccBiCkql.s]
         ignore line: [COMPILER_PATH=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../libexec/gcc/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/]
@@ -182,8 +182,8 @@ events:
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.']
-        ignore line: [[2/2] : && /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU -L/opt/devkitpro/wut/lib -L/opt/devkitpro/devkitPPC/lib -L/opt/devkitpro/devkitPPC/powerpc-eabi/lib -specs=/opt/devkitpro/wut/share/wut.specs -Wl --gc-sections -v CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -o cmTC_282e6   && :]
+        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-v' '-o' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj' '-c' '-dumpdir' 'CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.']
+        ignore line: [[2/2] : && /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc -mcpu=750 -meabi -mhard-float -ffunction-sections -fdata-sections -D__WIIU__ -D__WUT__ -DTARGET_WIIU -L/opt/devkitpro/wut/lib -L/opt/devkitpro/devkitPPC/lib -L/opt/devkitpro/devkitPPC/powerpc-eabi/lib -specs=/opt/devkitpro/wut/share/wut.specs -Wl --gc-sections -v CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -o cmTC_d1b96   && :]
         ignore line: [Using built-in specs.]
         ignore line: [Reading specs from C:/devkitPro/wut/share/wut.specs]
         ignore line: [rename spec link to old_link]
@@ -201,13 +201,13 @@ events:
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib/]
         ignore line: [C:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_282e6' '-dumpdir' 'cmTC_282e6.']
-        link line: [ C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/collect2.exe -plugin C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/liblto_plugin.dll -plugin-opt=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\devkitPro\\msys2\\tmp\\ccRfdCjb.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lsysbase -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc --sysroot=C:/devkitPro/devkitPPC/bin/../powerpc-eabi --eh-frame-hdr -V -dn -Bstatic -T C:/devkitPro/wut/share/wut.ld --gc-sections --emit-relocs --no-eh-frame-hdr -z nocopyreloc -o cmTC_282e6 C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o -LC:/devkitPro/wut/lib -LC:/devkitPro/devkitPPC/lib -LC:/devkitPro/devkitPPC/powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0 -LC:/devkitPro/devkitPPC/bin/../lib/gcc -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib --gc-sections CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj -lgcc --start-group -lsysbase -lc --end-group -lgcc C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtend.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_d1b96' '-dumpdir' 'cmTC_d1b96.']
+        link line: [ C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/collect2.exe -plugin C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/liblto_plugin.dll -plugin-opt=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\devkitPro\\msys2\\tmp\\cc15HRkv.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lsysbase -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc --sysroot=C:/devkitPro/devkitPPC/bin/../powerpc-eabi --eh-frame-hdr -V -dn -Bstatic -T C:/devkitPro/wut/share/wut.ld --gc-sections --emit-relocs --no-eh-frame-hdr -z nocopyreloc -o cmTC_d1b96 C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o -LC:/devkitPro/wut/lib -LC:/devkitPro/devkitPPC/lib -LC:/devkitPro/devkitPPC/powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0 -LC:/devkitPro/devkitPPC/bin/../lib/gcc -LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib -LC:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib --gc-sections CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj -lgcc --start-group -lsysbase -lc --end-group -lgcc C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtend.o C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrtn.o]
           arg [C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/collect2.exe] ==> ignore
           arg [-plugin] ==> ignore
           arg [C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/liblto_plugin.dll] ==> ignore
           arg [-plugin-opt=C:/devkitPro/devkitPPC/bin/../libexec/gcc/powerpc-eabi/15.2.0/lto-wrapper.exe] ==> ignore
-          arg [-plugin-opt=-fresolution=C:devkitPromsys2tmpccRfdCjb.res] ==> ignore
+          arg [-plugin-opt=-fresolution=C:devkitPromsys2tmpcc15HRkv.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lsysbase] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -224,7 +224,7 @@ events:
           arg [--no-eh-frame-hdr] ==> ignore
           arg [-znocopyreloc] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_282e6] ==> ignore
+          arg [cmTC_d1b96] ==> ignore
           arg [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o] ==> obj [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/ecrti.o]
           arg [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o] ==> obj [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/crtbegin.o]
           arg [-LC:/devkitPro/wut/lib] ==> dir [C:/devkitPro/wut/lib]
@@ -235,7 +235,7 @@ events:
           arg [-LC:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib] ==> dir [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/lib]
           arg [-LC:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib] ==> dir [C:/devkitPro/devkitPPC/bin/../powerpc-eabi/lib]
           arg [--gc-sections] ==> ignore
-          arg [CMakeFiles/cmTC_282e6.dir/CMakeCCompilerABI.c.obj] ==> ignore
+          arg [CMakeFiles/cmTC_d1b96.dir/CMakeCCompilerABI.c.obj] ==> ignore
           arg [-lgcc] ==> lib [gcc]
           arg [--start-group] ==> ignore
           arg [-lsysbase] ==> lib [sysbase]
@@ -256,7 +256,7 @@ events:
         ignore line: [   elf64lppc]
         ignore line: [C:/devkitPro/devkitPPC/bin/../lib/gcc/powerpc-eabi/15.2.0/../../../../powerpc-eabi/bin/ld.exe: warning: cannot find entry symbol __rpx_start]
         ignore line: [ defaulting to 02000000]
-        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_282e6' '-dumpdir' 'cmTC_282e6.']
+        ignore line: [COLLECT_GCC_OPTIONS='-mcpu=750' '-meabi' '-mhard-float' '-ffunction-sections' '-fdata-sections' '-D' '__WIIU__' '-D' '__WUT__' '-D' 'TARGET_WIIU' '-LC:/devkitPro/wut/lib' '-LC:/devkitPro/devkitPPC/lib' '-LC:/devkitPro/devkitPPC/powerpc-eabi/lib' '-specs=C:/devkitPro/wut/share/wut.specs' '-v' '-o' 'cmTC_d1b96' '-dumpdir' 'cmTC_d1b96.']
         ignore line: []
         ignore line: []
         collapse library dir [C:/devkitPro/wut/lib] ==> [C:/devkitPro/wut/lib]
