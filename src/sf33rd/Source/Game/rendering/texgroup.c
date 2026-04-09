@@ -22,6 +22,40 @@
 
 #include <stdlib.h>
 
+#if defined(TARGET_WIIU)
+#include <coreinit/debug.h>
+static void swap_trans_table_endian(uintptr_t trans_table_addr, uintptr_t texture_table_addr) {
+    u8* trans_table = (u8*)trans_table_addr;
+    u8* texture_table = (u8*)texture_table_addr;
+    /* Swap u32 offset array at start of trans_table */
+    u32* offsets = (u32*)trans_table;
+    u32 first = __builtin_bswap32(offsets[0]);
+    u32 n = first / 4;
+    u32 i;
+    for (i = 0; i < n; i++) {
+        offsets[i] = __builtin_bswap32(offsets[i]);
+    }
+    /* Swap each TileMapEntry (4 x u16) in each sub-table */
+    for (i = 0; i < n; i++) {
+        u16* entry = (u16*)(trans_table + offsets[i]);
+        u16 count = __builtin_bswap16(entry[0]);
+        entry[0] = count;
+        u16* tme = entry + 1;
+        u32 j;
+        for (j = 0; j < (u32)count * 4; j++) {
+            tme[j] = __builtin_bswap16(tme[j]);
+        }
+    }
+    /* Swap u32 offset array at start of texture_table */
+    u32* tex_offsets = (u32*)texture_table;
+    u32 tex_end = __builtin_bswap32(tex_offsets[0]);
+    u32 tex_n = tex_end / 4;
+    for (i = 0; i < tex_n; i++) {
+        tex_offsets[i] = __builtin_bswap32(tex_offsets[i]);
+    }
+}
+#endif
+
 typedef struct {
     s16 x;
     s16 y;
@@ -253,6 +287,9 @@ void q_ldreq_texture_group(REQ* curr) {
             curr->lds->texture_table = ldadr + bsd->to_tex;
             curr->lds->trans_table = ldadr;
             curr->lds->ok = 1;
+#if defined(TARGET_WIIU)
+            swap_trans_table_endian(curr->lds->trans_table, curr->lds->texture_table);
+#endif
 
             switch (bsd->ix1st) {
             case 1:
@@ -382,6 +419,9 @@ void checkSelObjFileLoaded() {
     lds->texture_table = ldadr + bsd->to_tex;
     lds->trans_table = ldadr;
     lds->ok = 1;
+#if defined(TARGET_WIIU)
+    swap_trans_table_endian(lds->trans_table, lds->texture_table);
+#endif
     omSelObjNowOnMemoryType = mpp_w.language;
     Clear_texcash_work();
 }
@@ -449,5 +489,8 @@ s32 load_any_texture_grpnum(u8 grp, u8 kokey) {
     lds->texture_table = ldadr + bsd->to_tex;
     lds->trans_table = ldadr;
     lds->ok = 1;
+#if defined(TARGET_WIIU)
+    swap_trans_table_endian(lds->trans_table, lds->texture_table);
+#endif
     return 1;
 }

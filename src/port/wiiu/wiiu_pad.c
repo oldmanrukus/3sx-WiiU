@@ -88,13 +88,16 @@ static void get_vpad_state(SDLPad_ButtonState* state) {
 
     memset(state, 0, sizeof(*state));
 
-    if (VPADRead(VPAD_CHAN_0, &vpad, 1, &error) <= 0 || error != VPAD_READ_SUCCESS) {
+    int vret = VPADRead(VPAD_CHAN_0, &vpad, 1, &error);
+    { static int fc = 0; if (fc % 120 == 0) OSReport("[3SX] VPAD: ret=%d err=%d\n", vret, error); fc++; }
+    if (vret <= 0 || error != VPAD_READ_SUCCESS) {
         vpad_connected = false;
         return;
     }
 
     vpad_connected = true;
     uint32_t hold = vpad.hold;
+    { static int vdbg = 0; if (hold && vdbg < 10) { OSReport("[3SX] VPAD hold=0x%08X\n", hold); vdbg++; } }
 
     /* D-pad */
     state->dpad_up    = (hold & VPAD_BUTTON_UP) != 0;

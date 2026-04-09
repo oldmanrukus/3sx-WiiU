@@ -4,6 +4,27 @@
  */
 
 #include <coreinit/debug.h>
+
+#if defined(TARGET_WIIU)
+#define LE32(x) __builtin_bswap32(x)
+#define LE16(x) __builtin_bswap16(x)
+#else
+#define LE32(x) (x)
+#define LE16(x) (x)
+
+#if defined(TARGET_WIIU)
+static inline TileMapEntry LE_TME(const TileMapEntry* p) {
+    TileMapEntry t;
+    t.x = (s16)LE16((u16)p->x);
+    t.y = (s16)LE16((u16)p->y);
+    t.attr = LE16(p->attr);
+    t.code = LE16(p->code);
+    return t;
+}
+#else
+#define LE_TME(p) (*(p))
+#endif
+#endif
 #include "sf33rd/Source/Game/rendering/mtrans.h"
 #include "common.h"
 #include "rendering/game_renderer.h"
@@ -2187,10 +2208,6 @@ static void DebugLine(f32 x, f32 y, f32 w, f32 h) {
 }
 
 void mlt_obj_melt2(MultiTexture* mt, u16 cg_number) {
-#if defined(TARGET_WIIU)
-    OSReport("[3SX] mlt_obj_melt2: cg_number=%d (SKIPPED - endianness)\n", cg_number);
-    return;
-#endif
     u32* textbl;
     u16* trsbas;
     TileMapEntry* trsptr;

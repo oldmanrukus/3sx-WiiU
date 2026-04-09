@@ -40,7 +40,7 @@ int WiiUApp_PreInit(void) {
 int WiiUApp_FullInit(void) {
     OSReport("[3SX] SDL_Init...\n");
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         OSReport("[3SX] SDL_Init failed: %s\n", SDL_GetError());
         return -1;
     }
@@ -113,13 +113,8 @@ bool WiiUApp_PollEvents(void) {
         return false;
     }
 
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            app_running = false;
-            return false;
-        }
-    }
+    /* SDL_PollEvent removed - SDL2-wiiu consumes VPAD events.
+     * WHBProcIsRunning handles HOME button. */
 
     return true;
 }
