@@ -3,6 +3,7 @@
  * Main Graphics Rendering and Transformation Engine
  */
 
+#include <coreinit/debug.h>
 #include "sf33rd/Source/Game/rendering/mtrans.h"
 #include "common.h"
 #include "rendering/game_renderer.h"
@@ -2186,6 +2187,10 @@ static void DebugLine(f32 x, f32 y, f32 w, f32 h) {
 }
 
 void mlt_obj_melt2(MultiTexture* mt, u16 cg_number) {
+#if defined(TARGET_WIIU)
+    OSReport("[3SX] mlt_obj_melt2: cg_number=%d (SKIPPED - endianness)\n", cg_number);
+    return;
+#endif
     u32* textbl;
     u16* trsbas;
     TileMapEntry* trsptr;
