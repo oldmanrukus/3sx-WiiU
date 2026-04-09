@@ -3,6 +3,7 @@
  * Opening
  */
 
+#include <coreinit/debug.h>
 #include "sf33rd/Source/Game/opening/opening.h"
 #include "common.h"
 #include "sf33rd/AcrSDK/ps2/flps2debug.h"
@@ -133,6 +134,7 @@ void TITLE_Init() {
         return;
     }
 
+    OSReport("[3SX] OPBG_Init: ppgSetupTexChunk_1st loadAdrs=%p size=%u\n", loadAdrs, (unsigned)loadSize);
     ppgSetupTexChunk_1st(NULL, loadAdrs, loadSize, 601, 1, 0, 0);
     ppgSetupTexChunk_2nd(NULL, 601);
     ppgSetupTexChunk_3rd(NULL, 601, 1);
@@ -194,6 +196,7 @@ s16 TITLE_Move(u16 type) {
 }
 
 void OPBG_Init() {
+    OSReport("[3SX] OPBG_Init...\n");
     void* loadAdrs;
     size_t loadSize;
     s16 i;
@@ -212,6 +215,7 @@ void OPBG_Init() {
 
     loadSize = Get_size_data_ramcnt_key(key);
     loadAdrs = (void*)Get_ramcnt_address(key);
+    OSReport("[3SX] OPBG_Init: ppgSetupTexChunk_1st loadAdrs=%p size=%u\n", loadAdrs, (unsigned)loadSize);
     ppgSetupTexChunk_1st(NULL, loadAdrs, loadSize, 602, 91, 0, 0);
 
     for (i = 0; i < ppgOpnBgTex.textures; i++) {
@@ -219,10 +223,13 @@ void OPBG_Init() {
         ppgSetupTexChunk_3rd(NULL, i + 602, 1);
     }
 
+    OSReport("[3SX] OPBG_Init: tex setup done, textures=%d\n", ppgOpnBgTex.textures);
     Opening_Now = 1;
     make_texcash_work(9);
+    OSReport("[3SX] OPBG_Init: mlt_obj_melt2...\n");
     mlt_obj_melt2(&mts[9], 0x8C40);
     sound_trg_init();
+    OSReport("[3SX] OPBG_Init: opening_init...\n");
     opening_init();
     Zoom_Value_Set(0x40);
 }
