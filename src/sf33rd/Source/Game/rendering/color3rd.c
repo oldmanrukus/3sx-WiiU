@@ -3,6 +3,7 @@
  * Loading, conversion, and hardware-upload of color palettes
  */
 
+#include <coreinit/debug.h>
 #include "sf33rd/Source/Game/rendering/color3rd.h"
 #include "common.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/cse.h"
@@ -132,6 +133,7 @@ void q_ldreq_color_data(REQ* curr) {
                 curr->rno = 5;
             } else {
                 init_trans_color_ram(curr->id, curr->key, cfn->type, cfn->data);
+        OSReport("[3SX]   init_trans_color_ram done\n");
                 fsClose(curr);
                 *curr->result |= lpr_wrdata[curr->id];
                 curr->be = 0;
@@ -162,6 +164,7 @@ void q_ldreq_color_data(REQ* curr) {
 }
 
 void load_any_color(u16 ix, u8 kokey) {
+    OSReport("[3SX] load_any_color: ix=%d kokey=%d\n", ix, kokey);
     col_file_data* cfn;
     s16 key;
 
@@ -169,7 +172,9 @@ void load_any_color(u16 ix, u8 kokey) {
     key = load_it_use_any_key(cfn->apfn, kokey, 0);
 
     if (key) {
+        OSReport("[3SX]   key=%d, calling init_trans_color_ram\n", key);
         init_trans_color_ram(0, key, cfn->type, cfn->data);
+        OSReport("[3SX]   init_trans_color_ram done\n");
     }
 }
 
@@ -483,9 +488,17 @@ void palCreateGhost() {
     ppl.free = 0;
     ppl.compress = 0;
     ppl.c_mode = 2;
+#if defined(TARGET_WIIU)
+    ppl.formARGB = 0x1555;
+#else
     ppl.formARGB = 0x5515;
+#endif
 
+#if defined(TARGET_WIIU)
+    ppl.palettes = 0x0010;
+#else
     ppl.palettes = 0x1000;
+#endif
     size = 0x2000;
     key = Pull_ramcnt_key(size, 2, 0, 1);
     adrs = (u8*)Get_ramcnt_address(key);
@@ -497,7 +510,11 @@ void palCreateGhost() {
     ppgSetupPalChunkDir(&col3rd_w.palDC, &ppl, adrs, 0, 1);
     Push_ramcnt_key(key);
 
+#if defined(TARGET_WIIU)
+    ppl.palettes = 0x0200;
+#else
     ppl.palettes = 2;
+#endif
     size = 0x2000;
     key = Pull_ramcnt_key(size, 2, 0, 1);
     adrs = (u8*)Get_ramcnt_address(key);

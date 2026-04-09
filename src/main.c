@@ -263,17 +263,17 @@ static void sf3_init() {
     DebugConfig_Init();
 #endif
 
-    flInitialize();
+    OSReport("[3SX] sf3_init: flInitialize...\n"); flInitialize();
     flSetRenderState(FLRENDER_BACKCOLOR, 0);
     system_init_level = 0;
-    ppgWorkInitializeApprication();
+    OSReport("[3SX] sf3_init: ppgWorkInitializeApprication...\n"); ppgWorkInitializeApprication();
     distributeScratchPadAddress();
     njdp2d_init();
-    njUserInit();
-    palCreateGhost();
-    ppgMakeConvTableTexDC();
-    appSetupBasePriority();
-    MemcardInit();
+    OSReport("[3SX] sf3_init: njUserInit...\n"); njUserInit();
+    OSReport("[3SX] sf3_init: njUserInit done, palCreateGhost...\n"); palCreateGhost();
+    OSReport("[3SX] sf3_init: ppgMakeConvTableTexDC...\n"); ppgMakeConvTableTexDC();
+    OSReport("[3SX] sf3_init: appSetupBasePriority...\n"); appSetupBasePriority();
+    OSReport("[3SX] sf3_init: MemcardInit...\n"); MemcardInit();
 }
 
 #if _WIN32 && DEBUG

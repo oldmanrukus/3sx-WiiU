@@ -1,6 +1,7 @@
 #include "sf33rd/Source/Common/PPGFile.h"
 #include "common.h"
 #include "rendering/game_renderer.h"
+#include <coreinit/debug.h>
 #include "sf33rd/AcrSDK/common/plcommon.h"
 #include "sf33rd/AcrSDK/ps2/flps2render.h"
 #include "sf33rd/AcrSDK/ps2/flps2vram.h"
@@ -11,11 +12,9 @@
 #include "structs.h"
 
 #include <SDL3/SDL.h>
-
 #define MAGIC_TO_INT(str) ((str[0] << 0x18) | (str[1] << 0x10) | (str[2] << 0x8) | (str[3]))
 
 #if defined(TARGET_WIIU)
-/* Big-endian PPC — PPG file data is stored big-endian (CPS3 native) */
 #define REVERT_U32(val) (val)
 #define REVERT_U16(val) (val)
 #define REVERT_U8(val)  (val)
@@ -457,9 +456,11 @@ s32 ppgSetupCmpChunk(u8* srcAdrs, s32 num, u8* dstAdrs) {
     s32 ofs;
 
     ofs = 0;
+    OSReport("[3SX] ppgSetupCmpChunk: srcAdrs=%p num=%d\n", srcAdrs, num);
 
     while (1) {
         ppx = (PPXFileHeader*)(srcAdrs + ofs);
+        OSReport("[3SX]   ofs=%d magic=0x%08X rev=0x%08X fileSize=0x%08X\n", ofs, ppx->magic, REVERT_U32(ppx->magic), REVERT_U32(ppx->fileSize));
 
         if (MAGIC_TO_INT("pEND") == REVERT_U32(ppx->magic)) {
             return -1;

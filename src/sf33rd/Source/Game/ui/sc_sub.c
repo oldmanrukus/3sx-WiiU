@@ -3,6 +3,7 @@
  * HUD elements and screen transitions
  */
 
+#include <coreinit/debug.h>
 #include "sf33rd/Source/Game/ui/sc_sub.h"
 #include "common.h"
 #include "rendering/game_renderer.h"
@@ -213,10 +214,15 @@ void Scrscreen_Init() {
         return;
     }
 
+    OSReport("[3SX] Scrscreen_Init: ppgSetupPalChunk ppgScrPalOpt...\n");
     ppgSetupPalChunk(&ppgScrPalOpt, (u8*)loadAdrs, loadSize, 0, 3, 1);
+    OSReport("[3SX] Scrscreen_Init: ppgSetupPalChunk ppgScrPalShot...\n");
     ppgSetupPalChunk(&ppgScrPalShot, (u8*)loadAdrs, loadSize, 0, 2, 1);
+    OSReport("[3SX] Scrscreen_Init: ppgSetupPalChunk ppgScrPalFace...\n");
     ppgSetupPalChunk(&ppgScrPalFace, (u8*)loadAdrs, loadSize, 0, 1, 1);
+    OSReport("[3SX] Scrscreen_Init: ppgSetupPalChunk NULL...\n");
     ppgSetupPalChunk(NULL, (u8*)loadAdrs, loadSize, 0, 0, 1);
+    OSReport("[3SX] Scrscreen_Init: ppgSetupTexChunk_1st...\n");
     ppgSetupTexChunk_1st(NULL, (u8*)loadAdrs, loadSize, 0, 6, 0, 0);
 
     for (i = 0; i < 3; i++) {
@@ -229,6 +235,7 @@ void Scrscreen_Init() {
         ppgSetupTexChunk_3rd(NULL, i, 1);
     }
 
+    OSReport("[3SX] Scrscreen_Init: all done!\n");
     Push_ramcnt_key(key);
     ppgSourceDataReleased(NULL);
     Sa_frame_Clear();
