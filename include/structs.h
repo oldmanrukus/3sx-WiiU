@@ -7,8 +7,13 @@
 #include <stdbool.h>
 
 typedef struct {
+#if defined(TARGET_WIIU)
+    s16 h;
+    s16 l;
+#else
     s16 l;
     s16 h;
+#endif
 } LoHi16;
 
 typedef union {

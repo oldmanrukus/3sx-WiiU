@@ -1,17 +1,10 @@
 /**
  * @file adx_wiiu.c
- * @brief Standalone ADX audio decoder for Wii U — replaces FFmpeg-based adx.c
+ * @brief Standalone ADX audio decoder for Wii U — uses SDL2 callback audio
  *
- * CRI ADX is a relatively simple ADPCM codec. This implements a minimal
- * decoder that handles:
- *   - ADX version 3 and 4 headers
- *   - Stereo and mono streams
- *   - Loop points (start/end sample with infinite looping)
- *   - Seamless multi-track playback
- *
- * Output feeds into AX audio via a ring buffer.
- *
- * Reference: https://en.wikipedia.org/wiki/ADX_(file_format)
+ * CRI ADX ADPCM decoder with SDL2 callback-based audio output.
+ * Uses a ring buffer between the game thread (decoder) and the audio
+ * callback thread (SDL/AX).
  */
 #include "port/sound/adx.h"
 #include "port/io/afs.h"
@@ -19,10 +12,7 @@
 #include "sf33rd/Source/Game/io/gd3rd.h"
 
 #include <coreinit/debug.h>
-#include <coreinit/cache.h>
-#include <coreinit/memdefaultheap.h>
-#include <sndcore2/core.h>
-#include <sndcore2/voice.h>
+#include <SDL2/SDL.h>
 
 #include <math.h>
 #include <stddef.h>
@@ -36,595 +26,314 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* ======================================
- * Constants
- * ====================================== */
-
 #define ADX_SAMPLE_RATE    48000
 #define ADX_CHANNELS       2
-#define ADX_BYTES_PER_SAMPLE 2
-#define ADX_RING_SIZE      (48000 * 2)  /* 1 second of stereo samples */
-#define ADX_RING_MASK      (ADX_RING_SIZE - 1)
 #define TRACKS_MAX         10
 
-/* ======================================
- * ADX decoder state
- * ====================================== */
+/* Ring buffer: must be power of 2. Stereo interleaved s16 samples. */
+#define RING_SAMPLES       (65536 * 2)
+#define RING_MASK          (RING_SAMPLES - 1)
+#define REFILL_THRESHOLD   (ADX_SAMPLE_RATE / 4 * ADX_CHANNELS)
 
-/* ADX ADPCM coefficients (fixed, derived from the cutoff frequency) */
-typedef struct ADXCoeffs {
-    int coeff1;
-    int coeff2;
-} ADXCoeffs;
+typedef struct ADXCoeffs { int coeff1, coeff2; } ADXCoeffs;
 
 typedef struct ADXDecoder {
-    int16_t prev1[2];  /* per-channel history */
-    int16_t prev2[2];
-    int channels;
-    int sample_rate;
-    int block_size;    /* typically 18 bytes */
-    int samples_per_block; /* (block_size - 2) * 2 = 32 for 18-byte blocks */
-    int header_size;   /* offset to first audio frame */
+    int16_t prev1[2], prev2[2];
+    int channels, sample_rate, block_size, samples_per_block, header_size;
     ADXCoeffs coeffs;
 } ADXDecoder;
 
 typedef struct ADXLoopInfo {
     bool enabled;
-    int start_sample;
-    int end_sample;
-    int16_t* loop_buffer;  /* pre-decoded loop region */
-    int loop_buffer_size;  /* in samples (per channel) */
-    int loop_position;     /* current read position in loop buffer */
+    int start_sample, end_sample;
+    int16_t* loop_buffer;
+    int loop_buffer_size, loop_position;
 } ADXLoopInfo;
 
 typedef struct ADXTrack {
-    uint8_t* data;
-    int size;
-    bool should_free;
-    int read_offset;
-    int decoded_samples;
-    ADXDecoder decoder;
-    ADXLoopInfo loop;
+    uint8_t* data; int size; bool should_free;
+    int read_offset, decoded_samples;
+    ADXDecoder decoder; ADXLoopInfo loop;
 } ADXTrack;
 
-/* ======================================
- * AX output
- * ====================================== */
+/* Ring buffer */
+static int16_t ring_buf[RING_SAMPLES];
+static volatile int ring_wpos = 0;
+static volatile int ring_rpos = 0;
 
-static AXVoice* adx_voice_l = NULL;
-static AXVoice* adx_voice_r = NULL;
+static int ring_used(void) { int u = ring_wpos - ring_rpos; return u < 0 ? u + RING_SAMPLES : u; }
+static int ring_free(void) { return RING_SAMPLES - 1 - ring_used(); }
 
-/* Ring buffer for decoded PCM (separate L/R for AX) */
-static int16_t* adx_pcm_l = NULL;
-static int16_t* adx_pcm_r = NULL;
-static volatile uint32_t adx_write_pos = 0;
+static void ring_write_stereo(int16_t l, int16_t r) {
+    if (ring_free() < 2) return;
+    ring_buf[ring_wpos] = l; ring_wpos = (ring_wpos + 1) & RING_MASK;
+    ring_buf[ring_wpos] = r; ring_wpos = (ring_wpos + 1) & RING_MASK;
+}
 
-/* ======================================
- * Track management
- * ====================================== */
+static void ring_clear(void) { ring_rpos = ring_wpos = 0; memset(ring_buf, 0, sizeof(ring_buf)); }
 
-static ADXTrack tracks[TRACKS_MAX] = { 0 };
-static int num_tracks = 0;
-static int first_track_index = 0;
-static bool has_tracks = false;
+static volatile int16_t peak_sample = 0;
 
-static bool is_paused = true;
+static void audio_callback(void* userdata, Uint8* stream, int len) {
+    (void)userdata;
+    int16_t* out = (int16_t*)stream;
+    int count = len / sizeof(int16_t);
+    int16_t local_peak = 0;
+    for (int i = 0; i < count; i++) {
+        if (ring_rpos != ring_wpos) {
+            out[i] = ring_buf[ring_rpos];
+            ring_rpos = (ring_rpos + 1) & RING_MASK;
+            int16_t abs_val = out[i] < 0 ? -out[i] : out[i];
+            if (abs_val > local_peak) local_peak = abs_val;
+        } else {
+            out[i] = 0;
+        }
+    }
+    if (local_peak > peak_sample) peak_sample = local_peak;
+}
+
+static SDL_AudioDeviceID audio_device = 0;
+static ADXTrack tracks[TRACKS_MAX] = {0};
+static int num_tracks = 0, first_track_index = 0;
+static bool has_tracks = false, is_paused = true;
 static float output_gain = 1.0f;
 
-/* ======================================
- * ADX header parsing
- * ====================================== */
+/* --- Header parsing --- */
 
-static uint16_t read_be16(const uint8_t* p) {
-    return ((uint16_t)p[0] << 8) | p[1];
-}
+static uint16_t read_be16(const uint8_t* p) { return ((uint16_t)p[0]<<8)|p[1]; }
+static uint32_t read_be32(const uint8_t* p) { return ((uint32_t)p[0]<<24)|((uint32_t)p[1]<<16)|((uint32_t)p[2]<<8)|p[3]; }
 
-static uint32_t read_be32(const uint8_t* p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8)  | p[3];
-}
-
-static void compute_adx_coefficients(int cutoff_freq, int sample_rate,
-                                      ADXCoeffs* out) {
-    /* Standard CRI coefficient calculation */
-    double a = sqrt(2.0) - cos(2.0 * M_PI * cutoff_freq / sample_rate);
+static void compute_adx_coefficients(int cutoff, int rate, ADXCoeffs* out) {
+    double a = sqrt(2.0) - cos(2.0*M_PI*cutoff/rate);
     double b = sqrt(2.0) - 1.0;
-    double c = (a - sqrt((a + b) * (a - b))) / b;
-
-    out->coeff1 = (int)(c * 2.0 * 4096.0);   /* Fixed-point 12-bit */
-    out->coeff2 = (int)(-(c * c) * 4096.0);
+    double c = (a - sqrt((a+b)*(a-b))) / b;
+    out->coeff1 = (int)(c*2.0*4096.0);
+    out->coeff2 = (int)(-(c*c)*4096.0);
 }
 
-static bool parse_adx_header(const uint8_t* data, int size,
-                              ADXDecoder* dec, ADXLoopInfo* loop) {
-    if (size < 0x20) return false;
-
-    /* Check magic: 0x80 0x00 */
-    if (data[0] != 0x80 || data[1] != 0x00) return false;
-
-    /* Header offset = big-endian u16 at offset 2, then +4 for "(c)CRI" marker */
-    uint16_t copyright_offset = read_be16(data + 2);
-    dec->header_size = copyright_offset + 4; /* Skip past "(c)CRI" */
-
-    /* Encoding type at offset 4 (should be 3 = ADX standard) */
-    uint8_t encoding = data[4];
-    if (encoding != 3) {
-        OSReport("[3SX] ADX: Unsupported encoding type %d\n", encoding);
-        return false;
-    }
-
-    dec->block_size = data[5];
-    /* bits_per_sample at offset 6 (should be 4) */
-    dec->channels = data[7];
-    dec->sample_rate = read_be32(data + 8);
-    /* total_samples at offset 12 */
+static bool parse_adx_header(const uint8_t* data, int size, ADXDecoder* dec, ADXLoopInfo* loop) {
+    if (size < 0x20 || data[0] != 0x80 || data[1] != 0x00) return false;
+    dec->header_size = read_be16(data+2) + 4;
+    if (data[4] != 3) { OSReport("[3SX] ADX: bad encoding %d\n", data[4]); return false; }
+    dec->block_size = data[5]; dec->channels = data[7];
+    dec->sample_rate = read_be32(data+8);
     dec->samples_per_block = (dec->block_size - 2) * 2;
-
-    /* Highpass cutoff frequency at offset 16 */
-    uint16_t cutoff = read_be16(data + 16);
-    if (cutoff == 0) cutoff = 500; /* Default */
+    uint16_t cutoff = read_be16(data+16); if (!cutoff) cutoff = 500;
     compute_adx_coefficients(cutoff, dec->sample_rate, &dec->coeffs);
-
-    /* Reset history */
-    memset(dec->prev1, 0, sizeof(dec->prev1));
-    memset(dec->prev2, 0, sizeof(dec->prev2));
-
-    /* Parse loop info */
+    OSReport("[3SX] ADX: cutoff=%d c1=%d c2=%d\n", cutoff, dec->coeffs.coeff1, dec->coeffs.coeff2);
+    memset(dec->prev1, 0, sizeof(dec->prev1)); memset(dec->prev2, 0, sizeof(dec->prev2));
     memset(loop, 0, sizeof(*loop));
-    uint8_t version = data[0x12];
-
-    switch (version) {
-    case 3:
-        if (read_be16(data + 0x16) == 1) {
-            loop->enabled = true;
-            loop->start_sample = read_be32(data + 0x1C);
-            loop->end_sample   = read_be32(data + 0x24);
-        }
-        break;
-
-    case 4:
-        if (read_be32(data + 0x24) == 1) {
-            loop->enabled = true;
-            loop->start_sample = read_be32(data + 0x28);
-            loop->end_sample   = read_be32(data + 0x30);
-        }
-        break;
-
-    default:
-        OSReport("[3SX] ADX: Unknown version %d, no loop info\n", version);
-        break;
+    uint8_t ver = data[0x12];
+    if (ver == 3 && read_be16(data+0x16) == 1) {
+        loop->enabled = true; loop->start_sample = read_be32(data+0x1C); loop->end_sample = read_be32(data+0x24);
+    } else if (ver == 4 && read_be32(data+0x24) == 1) {
+        loop->enabled = true; loop->start_sample = read_be32(data+0x28); loop->end_sample = read_be32(data+0x30);
     }
-
     if (loop->enabled) {
-        int loop_samples = loop->end_sample - loop->start_sample;
-        loop->loop_buffer_size = loop_samples * dec->channels;
-        loop->loop_buffer = (int16_t*)malloc(
-            loop->loop_buffer_size * sizeof(int16_t));
+        int n = loop->end_sample - loop->start_sample;
+        loop->loop_buffer_size = n * dec->channels;
+        loop->loop_buffer = (int16_t*)malloc(loop->loop_buffer_size * sizeof(int16_t));
         loop->loop_position = 0;
     }
-
+    OSReport("[3SX] ADX: ch=%d rate=%d blk=%d ver=%d loop=%d hdr=%d\n", dec->channels, dec->sample_rate, dec->block_size, ver, loop->enabled, dec->header_size);
+    if (dec->header_size + 8 <= size) {
+        const uint8_t* a = data + dec->header_size;
+        OSReport("[3SX] ADX audio@%d: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+            dec->header_size, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+    }
     return true;
 }
 
-/* ======================================
- * ADX block decoding
- * ====================================== */
+/* --- Block decoding --- */
 
-static int decode_adx_block(ADXDecoder* dec, const uint8_t* block,
-                             int channel, int16_t* output, int max_samples) {
-    int scale = read_be16(block);
-    const uint8_t* nibbles = block + 2;
-    int samples_decoded = 0;
-    int c1 = dec->coeffs.coeff1;
-    int c2 = dec->coeffs.coeff2;
-    int32_t prev1 = dec->prev1[channel];
-    int32_t prev2 = dec->prev2[channel];
-
-    for (int i = 0; i < dec->block_size - 2 && samples_decoded < max_samples; i++) {
-        /* Each byte has two 4-bit nibbles (high first) */
-        for (int nib = 0; nib < 2 && samples_decoded < max_samples; nib++) {
-            int nibble;
-            if (nib == 0) {
-                nibble = (nibbles[i] >> 4) & 0x0F;
-            } else {
-                nibble = nibbles[i] & 0x0F;
-            }
-
-            /* Sign-extend 4-bit to 32-bit */
-            if (nibble & 0x08) nibble -= 16;
-
-            /* Reconstruct sample */
-            int32_t sample = (nibble * scale +
-                              (c1 * prev1 + c2 * prev2)) >> 12;
-
-            /* Clamp to 16-bit */
-            if (sample > 32767) sample = 32767;
-            if (sample < -32768) sample = -32768;
-
-            output[samples_decoded] = (int16_t)sample;
-            samples_decoded++;
-
-            prev2 = prev1;
-            prev1 = sample;
+static int decode_adx_block(ADXDecoder* dec, const uint8_t* block, int ch, int16_t* out, int max) {
+    int scale = read_be16(block); const uint8_t* nib = block+2;
+    int n=0, c1=dec->coeffs.coeff1, c2=dec->coeffs.coeff2;
+    int32_t p1=dec->prev1[ch], p2=dec->prev2[ch];
+    for (int i=0; i<dec->block_size-2 && n<max; i++) {
+        for (int j=0; j<2 && n<max; j++) {
+            int v = j==0 ? (nib[i]>>4)&0xF : nib[i]&0xF;
+            if (v&8) v -= 16;
+            int32_t s = v * scale + ((c1*p1 + c2*p2) >> 12);
+            if (s>32767) s=32767; if (s<-32768) s=-32768;
+            out[n++] = (int16_t)s; p2=p1; p1=s;
         }
     }
-
-    dec->prev1[channel] = prev1;
-    dec->prev2[channel] = prev2;
-
-    return samples_decoded;
+    dec->prev1[ch]=p1; dec->prev2[ch]=p2;
+    return n;
 }
 
-/* ======================================
- * Track decoding
- * ====================================== */
+/* --- Track decode to ring --- */
 
-/* Decode samples from a track into the AX ring buffers */
-static int decode_track_samples(ADXTrack* track, int max_samples) {
-    ADXDecoder* dec = &track->decoder;
-    int samples_output = 0;
-    int16_t block_samples[64]; /* Enough for one block */
-
-    while (samples_output < max_samples) {
-        /* Check if we've reached the end of the data */
-        if (track->read_offset + (dec->block_size * dec->channels) > track->size) {
-            break;
-        }
-
-        /* Check loop end */
-        if (track->loop.enabled &&
-            track->decoded_samples >= track->loop.end_sample) {
-            break;
-        }
-
-        /* Decode one frame (one block per channel) */
-        int samples_this_frame = 0;
-
-        if (dec->channels == 2) {
-            /* Stereo: L block, then R block */
-            int n = decode_adx_block(dec,
-                                      track->data + track->read_offset,
-                                      0, block_samples, dec->samples_per_block);
-            track->read_offset += dec->block_size;
-
-            int16_t block_samples_r[64];
-            decode_adx_block(dec,
-                             track->data + track->read_offset,
-                             1, block_samples_r, n);
-            track->read_offset += dec->block_size;
-
-            /* Write interleaved to ring buffers */
-            for (int i = 0; i < n && samples_output < max_samples; i++) {
-                uint32_t wp = adx_write_pos & (ADX_RING_SIZE - 1);
-                int16_t l = (int16_t)(block_samples[i] * output_gain);
-                int16_t r = (int16_t)(block_samples_r[i] * output_gain);
-
-                adx_pcm_l[wp] = l;
-                adx_pcm_r[wp] = r;
-                adx_write_pos++;
-                samples_output++;
-
-                /* Store in loop buffer if within loop region */
-                if (track->loop.enabled &&
-                    track->decoded_samples + i >= track->loop.start_sample &&
-                    track->decoded_samples + i < track->loop.end_sample) {
-                    int li = (track->decoded_samples + i - track->loop.start_sample) * 2;
-                    if (li + 1 < track->loop.loop_buffer_size) {
-                        track->loop.loop_buffer[li] = l;
-                        track->loop.loop_buffer[li + 1] = r;
-                    }
+static int decode_track_to_ring(ADXTrack* t, int max) {
+    ADXDecoder* d = &t->decoder; int out=0;
+    int16_t bl[64], br[64];
+    static int dec_dbg = 0;
+    while (out < max && ring_free() >= 2) {
+        if (t->read_offset + d->block_size*d->channels > t->size) break;
+        if (t->loop.enabled && t->decoded_samples >= t->loop.end_sample) break;
+        if (d->channels == 2) {
+            int n = decode_adx_block(d, t->data+t->read_offset, 0, bl, d->samples_per_block);
+            t->read_offset += d->block_size;
+            decode_adx_block(d, t->data+t->read_offset, 1, br, n);
+            t->read_offset += d->block_size;
+            if (dec_dbg < 3000 && n > 0) {
+                dec_dbg++;
+                if (dec_dbg <= 3) {
+                    const uint8_t* raw = t->data + t->read_offset - d->block_size * 2;
+                    OSReport("[3SX] BLK%d @%d: %02X%02X %02X%02X%02X%02X | %02X%02X %02X%02X%02X%02X\n",
+                        dec_dbg, (int)(raw - t->data),
+                        raw[0], raw[1], raw[2], raw[3], raw[4], raw[5],
+                        raw[18], raw[19], raw[20], raw[21], raw[22], raw[23]);
+                }
+                if ((dec_dbg % 500) == 0) {
+                    int16_t maxval = 0;
+                    for (int i=0; i<n; i++) { if (bl[i]>maxval) maxval=bl[i]; if (-bl[i]>maxval) maxval=-bl[i]; }
+                    OSReport("[3SX] DEC: blk=%d max=%d scale=%d\n", dec_dbg, maxval, read_be16(t->data+t->read_offset-d->block_size*2));
                 }
             }
-
-            samples_this_frame = n;
-
-        } else {
-            /* Mono */
-            int n = decode_adx_block(dec,
-                                      track->data + track->read_offset,
-                                      0, block_samples, dec->samples_per_block);
-            track->read_offset += dec->block_size;
-
-            for (int i = 0; i < n && samples_output < max_samples; i++) {
-                uint32_t wp = adx_write_pos & (ADX_RING_SIZE - 1);
-                int16_t s = (int16_t)(block_samples[i] * output_gain);
-                adx_pcm_l[wp] = s;
-                adx_pcm_r[wp] = s;
-                adx_write_pos++;
-                samples_output++;
+            for (int i=0; i<n && out<max && ring_free()>=2; i++) {
+                int16_t l=(int16_t)(bl[i]*output_gain), r=(int16_t)(br[i]*output_gain);
+                ring_write_stereo(l, r); out++;
+                if (t->loop.enabled && t->decoded_samples+i >= t->loop.start_sample && t->decoded_samples+i < t->loop.end_sample) {
+                    int li = (t->decoded_samples+i - t->loop.start_sample)*2;
+                    if (li+1 < t->loop.loop_buffer_size) { t->loop.loop_buffer[li]=l; t->loop.loop_buffer[li+1]=r; }
+                }
             }
-
-            samples_this_frame = n;
-        }
-
-        track->decoded_samples += samples_this_frame;
-    }
-
-    return samples_output;
-}
-
-static bool track_exhausted(ADXTrack* track) {
-    if (track->loop.enabled) return false;
-    return track->read_offset >= track->size;
-}
-
-static bool track_loop_filled(ADXTrack* track) {
-    return track->loop.enabled &&
-           track->decoded_samples >= track->loop.end_sample;
-}
-
-/* Play loop buffer samples into the ring */
-static int play_loop_samples(ADXTrack* track, int max_samples) {
-    if (!track->loop.enabled || !track->loop.loop_buffer) return 0;
-
-    int samples = 0;
-    int loop_samples = track->loop.end_sample - track->loop.start_sample;
-
-    while (samples < max_samples) {
-        uint32_t wp = adx_write_pos & (ADX_RING_SIZE - 1);
-        int li = track->loop.loop_position * 2;
-
-        adx_pcm_l[wp] = track->loop.loop_buffer[li];
-        adx_pcm_r[wp] = track->loop.loop_buffer[li + 1];
-
-        adx_write_pos++;
-        samples++;
-        track->loop.loop_position++;
-
-        if (track->loop.loop_position >= loop_samples) {
-            track->loop.loop_position = 0;
+            t->decoded_samples += n;
+        } else {
+            int n = decode_adx_block(d, t->data+t->read_offset, 0, bl, d->samples_per_block);
+            t->read_offset += d->block_size;
+            for (int i=0; i<n && out<max && ring_free()>=2; i++) {
+                int16_t s=(int16_t)(bl[i]*output_gain); ring_write_stereo(s, s); out++;
+            }
+            t->decoded_samples += n;
         }
     }
-
-    return samples;
+    return out;
 }
 
-/* ======================================
- * File loading
- * ====================================== */
+static bool track_exhausted(ADXTrack* t) { return !t->loop.enabled && t->read_offset >= t->size; }
+static bool track_loop_filled(ADXTrack* t) { return t->loop.enabled && t->decoded_samples >= t->loop.end_sample; }
 
-static void* load_afs_file(int file_id, int* out_size) {
-    unsigned int file_size = fsGetFileSize(file_id);
-    *out_size = file_size;
-    size_t buff_size = (file_size + 2048 - 1) & ~(2048 - 1);
-    void* buff = malloc(buff_size);
-
-    AFSHandle handle = AFS_Open(file_id);
-    AFS_ReadSync(handle, fsCalSectorSize(file_size), buff);
-    AFS_Close(handle);
-
-    return buff;
+static int play_loop_to_ring(ADXTrack* t, int max) {
+    if (!t->loop.enabled || !t->loop.loop_buffer) return 0;
+    int total = t->loop.end_sample - t->loop.start_sample, n=0;
+    while (n < max && ring_free() >= 2) {
+        int li = t->loop.loop_position*2;
+        ring_write_stereo((int16_t)(t->loop.loop_buffer[li]*output_gain),
+                          (int16_t)(t->loop.loop_buffer[li+1]*output_gain));
+        n++; t->loop.loop_position++;
+        if (t->loop.loop_position >= total) t->loop.loop_position = 0;
+    }
+    return n;
 }
 
-/* ======================================
- * Track management
- * ====================================== */
+/* --- File loading --- */
 
-static void track_init(ADXTrack* track, int file_id,
-                        void* buf, size_t buf_size, bool allow_loop) {
-    memset(track, 0, sizeof(*track));
-
-    if (file_id != -1) {
-        track->data = load_afs_file(file_id, &track->size);
-        track->should_free = true;
-    } else {
-        track->data = buf;
-        track->size = buf_size;
-        track->should_free = false;
-    }
-
-    if (!parse_adx_header(track->data, track->size,
-                           &track->decoder, &track->loop)) {
-        OSReport("[3SX] ADX: Failed to parse header\n");
-        return;
-    }
-
-    if (!allow_loop) {
-        track->loop.enabled = false;
-    }
-
-    track->read_offset = track->decoder.header_size;
-    track->decoded_samples = 0;
-
-    /* Decode initial batch */
-    decode_track_samples(track, ADX_SAMPLE_RATE / 4);
+static void* load_afs_file(int id, int* sz) {
+    unsigned int fsz = fsGetFileSize(id); *sz = fsz;
+    size_t bsz = (fsz+2047)&~2047; void* b = malloc(bsz);
+    AFSHandle h = AFS_Open(id); AFS_ReadSync(h, fsCalSectorSize(fsz), b); AFS_Close(h);
+    return b;
 }
 
-static void track_destroy(ADXTrack* track) {
-    if (track->loop.loop_buffer) {
-        free(track->loop.loop_buffer);
-    }
-    if (track->should_free && track->data) {
-        free(track->data);
-    }
-    memset(track, 0, sizeof(*track));
+/* --- Track mgmt --- */
+
+static void track_init(ADXTrack* t, int fid, void* buf, size_t bsz, bool loop) {
+    memset(t, 0, sizeof(*t));
+    if (fid != -1) { t->data = load_afs_file(fid, &t->size); t->should_free = true; }
+    else { t->data = buf; t->size = bsz; t->should_free = false; }
+    if (!parse_adx_header(t->data, t->size, &t->decoder, &t->loop)) { OSReport("[3SX] ADX: bad header\n"); return; }
+    if (!loop) t->loop.enabled = false;
+    t->read_offset = t->decoder.header_size; t->decoded_samples = 0;
+    decode_track_to_ring(t, t->decoder.sample_rate / 4);
+}
+
+static void track_destroy(ADXTrack* t) {
+    if (t->loop.loop_buffer) free(t->loop.loop_buffer);
+    if (t->should_free && t->data) free(t->data);
+    memset(t, 0, sizeof(*t));
 }
 
 static ADXTrack* alloc_track(void) {
-    int index = (first_track_index + num_tracks) % TRACKS_MAX;
-    num_tracks++;
-    has_tracks = true;
-    return &tracks[index];
+    int i = (first_track_index + num_tracks) % TRACKS_MAX;
+    num_tracks++; has_tracks = true; return &tracks[i];
 }
 
-/* ======================================
- * Public API
- * ====================================== */
+/* --- Public API --- */
 
 void ADX_ProcessTracks(void) {
     if (is_paused || !has_tracks) return;
 
-    int first = first_track_index;
-    int count = num_tracks;
+    int used = ring_used();
 
-    for (int i = 0; i < count; i++) {
-        int j = (first + i) % TRACKS_MAX;
-        ADXTrack* track = &tracks[j];
-
-        /* Decode more samples if needed */
-        if (!track_loop_filled(track) && !track_exhausted(track)) {
-            decode_track_samples(track, ADX_SAMPLE_RATE / 60);
-        }
-
-        /* Play loop buffer if loop region fully decoded */
-        if (track_loop_filled(track)) {
-            play_loop_samples(track, ADX_SAMPLE_RATE / 60);
-            break; /* Looping tracks play indefinitely */
-        }
-
-        if (!track_exhausted(track)) break;
-
-        /* Track is done, move to next */
-        track_destroy(track);
-        num_tracks--;
-        if (num_tracks > 0) {
-            first_track_index++;
-        } else {
-            first_track_index = 0;
+    {
+        static int pt_log = 0;
+        if ((pt_log++ % 60) == 0 && pt_log < 1200) {
+            OSReport("[3SX] PT: used=%d peak=%d tracks=%d\n", used, peak_sample, num_tracks);
+            peak_sample = 0;
         }
     }
 
-    /* Flush cache for AX DMA */
-    if (adx_pcm_l && adx_pcm_r) {
-        DCFlushRange(adx_pcm_l, ADX_RING_SIZE * sizeof(int16_t));
-        DCFlushRange(adx_pcm_r, ADX_RING_SIZE * sizeof(int16_t));
+    if (used > REFILL_THRESHOLD) return;
+    int first=first_track_index, count=num_tracks;
+    for (int i=0; i<count; i++) {
+        int j = (first+i)%TRACKS_MAX; ADXTrack* t = &tracks[j];
+        if (!track_loop_filled(t) && !track_exhausted(t)) decode_track_to_ring(t, t->decoder.sample_rate/60);
+        if (track_loop_filled(t)) { play_loop_to_ring(t, t->decoder.sample_rate/60); break; }
+        if (!track_exhausted(t)) break;
+        track_destroy(t); num_tracks--;
+        if (num_tracks>0) first_track_index++; else first_track_index=0;
     }
 }
 
 void ADX_Init(void) {
-    /* Allocate ring buffers in MEM2 for DMA access */
-    adx_pcm_l = (int16_t*)MEMAllocFromDefaultHeapEx(
-        ADX_RING_SIZE * sizeof(int16_t), 64);
-    adx_pcm_r = (int16_t*)MEMAllocFromDefaultHeapEx(
-        ADX_RING_SIZE * sizeof(int16_t), 64);
-    memset(adx_pcm_l, 0, ADX_RING_SIZE * sizeof(int16_t));
-    memset(adx_pcm_r, 0, ADX_RING_SIZE * sizeof(int16_t));
-    adx_write_pos = 0;
-
-    /* Acquire AX voices for ADX playback */
-    adx_voice_l = AXAcquireVoice(30, NULL, NULL);
-    adx_voice_r = AXAcquireVoice(30, NULL, NULL);
-
-    if (adx_voice_l) {
-        AXVoiceBegin(adx_voice_l);
-        AXVoiceOffsets offsets = {
-            .dataType = AX_VOICE_FORMAT_LPCM16,
-            .loopingEnabled = AX_VOICE_LOOP_ENABLED,
-            .loopOffset = 0,
-            .endOffset = ADX_RING_SIZE - 1,
-            .currentOffset = 0,
-            .data = adx_pcm_l,
-        };
-        AXSetVoiceOffsets(adx_voice_l, &offsets);
-        AXVoiceVeData ve = { .volume = 0x8000 };
-        AXSetVoiceVe(adx_voice_l, &ve);
-
-        AXVoiceDeviceMixData mix[6] = { 0 };
-        mix[0].bus[0].volume = 0x8000;
-        AXSetVoiceDeviceMix(adx_voice_l, AX_DEVICE_TYPE_TV, 0, mix);
-        AXSetVoiceDeviceMix(adx_voice_l, AX_DEVICE_TYPE_DRC, 0, mix);
-
-        AXSetVoiceSrcType(adx_voice_l, AX_VOICE_SRC_TYPE_NONE);
-        AXSetVoiceState(adx_voice_l, AX_VOICE_STATE_PLAYING);
-        AXVoiceEnd(adx_voice_l);
+    if (!(SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO)) {
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) { OSReport("[3SX] ADX: SDL audio init fail: %s\n", SDL_GetError()); return; }
     }
-
-    if (adx_voice_r) {
-        AXVoiceBegin(adx_voice_r);
-        AXVoiceOffsets offsets = {
-            .dataType = AX_VOICE_FORMAT_LPCM16,
-            .loopingEnabled = AX_VOICE_LOOP_ENABLED,
-            .loopOffset = 0,
-            .endOffset = ADX_RING_SIZE - 1,
-            .currentOffset = 0,
-            .data = adx_pcm_r,
-        };
-        AXSetVoiceOffsets(adx_voice_r, &offsets);
-        AXVoiceVeData ve = { .volume = 0x8000 };
-        AXSetVoiceVe(adx_voice_r, &ve);
-
-        AXVoiceDeviceMixData mix[6] = { 0 };
-        mix[1].bus[0].volume = 0x8000;
-        AXSetVoiceDeviceMix(adx_voice_r, AX_DEVICE_TYPE_TV, 0, mix);
-        AXSetVoiceDeviceMix(adx_voice_r, AX_DEVICE_TYPE_DRC, 0, mix);
-
-        AXSetVoiceSrcType(adx_voice_r, AX_VOICE_SRC_TYPE_NONE);
-        AXSetVoiceState(adx_voice_r, AX_VOICE_STATE_PLAYING);
-        AXVoiceEnd(adx_voice_r);
-    }
-
-    OSReport("[3SX] ADX audio initialized (standalone decoder)\n");
+    ring_clear();
+    SDL_AudioSpec want, have; SDL_zero(want);
+    want.freq = ADX_SAMPLE_RATE; want.format = AUDIO_S16SYS;
+    want.channels = ADX_CHANNELS; want.samples = 512;
+    want.callback = audio_callback; want.userdata = NULL;
+    audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+    if (!audio_device) { OSReport("[3SX] ADX: open fail: %s\n", SDL_GetError()); }
+    else { OSReport("[3SX] ADX: OK drv=%s dev=%u freq=%d ch=%d\n", SDL_GetCurrentAudioDriver()?SDL_GetCurrentAudioDriver():"?", audio_device, have.freq, have.channels); SDL_PauseAudioDevice(audio_device, 0); }
 }
 
-void ADX_Exit(void) {
-    ADX_Stop();
-    if (adx_voice_l) { AXFreeVoice(adx_voice_l); adx_voice_l = NULL; }
-    if (adx_voice_r) { AXFreeVoice(adx_voice_r); adx_voice_r = NULL; }
-    if (adx_pcm_l) { MEMFreeToDefaultHeap(adx_pcm_l); adx_pcm_l = NULL; }
-    if (adx_pcm_r) { MEMFreeToDefaultHeap(adx_pcm_r); adx_pcm_r = NULL; }
-}
+void ADX_Exit(void) { ADX_Stop(); if (audio_device) { SDL_CloseAudioDevice(audio_device); audio_device=0; } }
 
 void ADX_Stop(void) {
-    is_paused = true;
-
-    /* Clear ring buffers */
-    if (adx_pcm_l) memset(adx_pcm_l, 0, ADX_RING_SIZE * sizeof(int16_t));
-    if (adx_pcm_r) memset(adx_pcm_r, 0, ADX_RING_SIZE * sizeof(int16_t));
-    adx_write_pos = 0;
-
-    for (int i = 0; i < num_tracks; i++) {
-        int j = (first_track_index + i) % TRACKS_MAX;
-        track_destroy(&tracks[j]);
-    }
-    num_tracks = 0;
-    first_track_index = 0;
-    has_tracks = false;
+    is_paused = true; ring_clear();
+    for (int i=0; i<num_tracks; i++) { int j=(first_track_index+i)%TRACKS_MAX; track_destroy(&tracks[j]); }
+    num_tracks=0; first_track_index=0; has_tracks=false;
 }
 
 int ADX_IsPaused(void) { return is_paused; }
-
-void ADX_Pause(int pause) { is_paused = pause; }
+void ADX_Pause(int p) { is_paused=p; if (audio_device) SDL_PauseAudioDevice(audio_device, p); }
+void ADX_StartSeamless(void) { is_paused=false; if (audio_device) SDL_PauseAudioDevice(audio_device, 0); }
+void ADX_ResetEntry(void) {}
 
 void ADX_StartMem(void* buf, size_t size) {
-    ADX_Stop();
-    ADXTrack* track = alloc_track();
-    track_init(track, -1, buf, size, true);
-    is_paused = false;
+    ADX_Stop(); ADXTrack* t = alloc_track(); track_init(t, -1, buf, size, true);
+    is_paused=false; if (audio_device) SDL_PauseAudioDevice(audio_device, 0);
 }
 
 int ADX_GetNumFiles(void) { return num_tracks; }
+void ADX_EntryAfs(int id) { ADXTrack* t = alloc_track(); track_init(t, id, NULL, 0, false); }
 
-void ADX_EntryAfs(int file_id) {
-    ADXTrack* track = alloc_track();
-    track_init(track, file_id, NULL, 0, false);
+void ADX_StartAfs(int id) {
+    ADX_Stop(); ADXTrack* t = alloc_track(); track_init(t, id, NULL, 0, true);
+    is_paused=false; if (audio_device) SDL_PauseAudioDevice(audio_device, 0);
+    OSReport("[3SX] ADX_StartAfs: id=%d sz=%d rate=%d ring=%d\n", id, t->size, t->decoder.sample_rate, ring_used());
 }
 
-void ADX_StartSeamless(void) { is_paused = false; }
-void ADX_ResetEntry(void) { /* Called after Stop, nothing needed */ }
-
-void ADX_StartAfs(int file_id) {
-    ADX_Stop();
-    ADXTrack* track = alloc_track();
-    track_init(track, file_id, NULL, 0, true);
-    is_paused = false;
-}
-
-void ADX_SetOutVol(int volume) {
-    output_gain = powf(10.0f, volume / 200.0f);
-}
-
-void ADX_SetMono(bool mono) {
-    /* Not implemented */
-    (void)mono;
-}
+void ADX_SetOutVol(int vol) { output_gain = 1.0f; /* Force max for testing */ }
+void ADX_SetMono(bool m) { (void)m; }
 
 ADXState ADX_GetState(void) {
-    if (!has_tracks) return ADX_STATE_STOP;
-    if (is_paused) return ADX_STATE_STOP;
-    /* Check if all non-looping tracks are exhausted */
-    for (int i = 0; i < num_tracks; i++) {
-        int j = (first_track_index + i) % TRACKS_MAX;
-        if (!track_exhausted(&tracks[j])) return ADX_STATE_PLAYING;
-    }
+    if (!has_tracks || is_paused) return ADX_STATE_STOP;
+    for (int i=0; i<num_tracks; i++) { int j=(first_track_index+i)%TRACKS_MAX; if (!track_exhausted(&tracks[j])) return ADX_STATE_PLAYING; }
     return ADX_STATE_PLAYEND;
 }

@@ -5,6 +5,7 @@
 #include "port/wiiu/wiiu_app.h"
 #include "port/wiiu/wiiu_pad.h"
 #include "port/sdl/sdl_game_renderer.h"
+#include "port/sound/adx.h"
 #include "common.h"
 
 #include <coreinit/debug.h>
@@ -129,6 +130,9 @@ void WiiUApp_BeginFrame(void) {
 
 void WiiUApp_EndFrame(void) {
     if (!sdl_renderer) return;
+
+    /* Process audio */
+    ADX_ProcessTracks();
 
     /* Render all queued sprites to cps3_canvas */
     SDLGameRenderer_RenderFrame();

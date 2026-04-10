@@ -320,9 +320,9 @@ void OPBG_Trans() {
 
     {
         static int ss_dbg = 0;
-        if (ss_dbg < 30) {
-            OSReport("[3SX] OPBG_Trans: Screen_Switch=0x%X r_no_0=%d\n", Screen_Switch, op_w.r_no_0);
-            ss_dbg++;
+        if (op_w.r_no_0 == 1 && (ss_dbg++ % 30) == 0 && ss_dbg < 300) {
+            OSReport("[3SX] OPBG_Trans: SS=0x%X r1=%d r2=%d timer=%d gSeq=%d\n",
+                Screen_Switch, op_w.r_no_1, op_w.r_no_2, op_plmove_timer, gSeqStatus[0]);
         }
     }
 

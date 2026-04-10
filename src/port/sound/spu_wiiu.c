@@ -405,15 +405,21 @@ void SPU_Init(void (*cb)()) {
     memset(ax_buffer_l, 0, RING_BUFFER_SAMPLES * sizeof(s16));
     memset(ax_buffer_r, 0, RING_BUFFER_SAMPLES * sizeof(s16));
 
-    /* Initialize AX audio system */
-    AXInitParams init_params = {
-        .renderer = AX_INIT_RENDERER_48KHZ,
-        .pipeline = AX_INIT_PIPELINE_SINGLE,
-    };
-    AXInitWithParams(&init_params);
+    /* Initialize AX audio system (may already be init'd by SDL audio) */
+    /* TEMPORARILY DISABLED - testing if SPU AX conflicts with SDL audio
+    if (!AXIsInit()) {
+        AXInitParams init_params = {
+            .renderer = AX_INIT_RENDERER_48KHZ,
+            .pipeline = AX_INIT_PIPELINE_SINGLE,
+        };
+        AXInitWithParams(&init_params);
+    }
+    */
 
     /* Register our frame callback */
+    /* TEMPORARILY DISABLED
     AXRegisterAppFrameCallback(ax_frame_callback);
+    */
 
     /* Acquire a voice for left channel */
     ax_voice_l = AXAcquireVoice(31, NULL, NULL);
