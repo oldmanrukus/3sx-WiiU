@@ -329,11 +329,11 @@ s32 ppgWriteQuadUseTrans(Vertex* pos, u32 col, PPGDataList* tb, s32 tix, s32 cix
             for (i = 0; i < transTotal; i++) {
                 if (ix_ofs & 0x4000) {
                     palhan = phan[*tran + pal];
-                    if (palhan == 0 && i == 0) {
+                    if (i == 0) {
                         static int tpal_dbg = 0;
-                        if (tpal_dbg < 5) {
-                            OSReport("[3SX] WARN ppgWriteQuadUseTrans(trans): palhan=0, tran_idx=%d pal=%d, tb->pal->total=%d\n",
-                                *tran, pal, tb->pal ? tb->pal->total : -1);
+                        if (tpal_dbg < 15) {
+                            OSReport("[3SX] TRANS: tran_idx=%d pal=%d palhan=%u texhan=%u transTotal=%d tix=%d\n",
+                                *tran, pal, palhan, texhan, transTotal, tix);
                             tpal_dbg++;
                         }
                     }

@@ -3,6 +3,7 @@
  * Main Sound System Controller
  */
 
+#include <coreinit/debug.h>
 #include "sf33rd/Source/Game/sound/sound3rd.h"
 #include "common.h"
 #include "main.h"
@@ -305,8 +306,26 @@ void sound_request_for_dc(SoundPatchConfig* rmc, s16 pan) {
 }
 
 void BGM_Server() {
+    {
+        static int bgm_dbg2 = 0;
+        if (bgm_dbg2 < 3) {
+            OSReport("[3SX] BGM_Server: init_level=%d req=%d kind=%d code=%d\n",
+                system_init_level, bgm_req.req, bgm_req.kind, bgm_req.code);
+            bgm_dbg2++;
+        }
+    }
+
     if (!(system_init_level & 2)) {
         return;
+    }
+
+    {
+        static int bgm_dbg = 0;
+        if (bgm_dbg < 5 && bgm_req.req) {
+            OSReport("[3SX] BGM_Server: processing req kind=%d code=%d data=%d\n",
+                bgm_req.kind, bgm_req.code, bgm_req.data);
+            bgm_dbg++;
+        }
     }
 
     if (bgm_req.req) {

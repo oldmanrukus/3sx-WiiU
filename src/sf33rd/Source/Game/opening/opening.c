@@ -318,6 +318,14 @@ void OPBG_Trans() {
     scr_calc(1);
     scr_calc(2);
 
+    {
+        static int ss_dbg = 0;
+        if (ss_dbg < 30) {
+            OSReport("[3SX] OPBG_Trans: Screen_Switch=0x%X r_no_0=%d\n", Screen_Switch, op_w.r_no_0);
+            ss_dbg++;
+        }
+    }
+
     if (Screen_Switch & 1) {
         opbg_trans(&op_w.bgw[0], bg_prm[0].bg_h_shift, bg_prm[0].bg_v_shift);
     }

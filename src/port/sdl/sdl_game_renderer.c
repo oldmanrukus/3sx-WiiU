@@ -442,6 +442,19 @@ void SDLGameRenderer_SetTexture(unsigned int th) {
         SDL_SetSurfacePalette(surface, palette);
     }
 
+#if defined(TARGET_WIIU)
+    {
+        static int stex_dbg = 0;
+        if (stex_dbg < 10 && palette != NULL && palette_handle > 300 && palette->ncolors > 1) {
+            OSReport("[3SX] SetTex: th=%u texH=%d palH=%d ncolors=%d c[0]=(%d,%d,%d,%d) c[1]=(%d,%d,%d,%d)\n",
+                th, texture_handle, palette_handle, palette->ncolors,
+                palette->colors[0].r, palette->colors[0].g, palette->colors[0].b, palette->colors[0].a,
+                palette->colors[1].r, palette->colors[1].g, palette->colors[1].b, palette->colors[1].a);
+            stex_dbg++;
+        }
+    }
+#endif
+
     SDL_Texture* texture = NULL;
     const SDL_Texture* cached_texture = texture_cache[texture_handle - 1][palette_handle];
 
