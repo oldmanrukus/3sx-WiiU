@@ -68,6 +68,7 @@ MVXY op_bg_mvxy[3];
 OP_W op_w;
 
 s16 opening_demo() {
+    OSReport("[3SX] opening_demo: D_No3=%d r_no_0=%d\n", D_No[3], op_w.r_no_0);
     switch (D_No[3]) {
     case 0:
         D_No[3] += 1;
@@ -234,11 +235,25 @@ void OPBG_Init() {
     Zoom_Value_Set(0x40);
 }
 
+s16 oh_opening_demo() {
+    void (*opening_demo_jp[3])() = { opening_init2, opening_move, opening_title };
+    Game_timer += 1;
+    OSReport("[3SX] oh_opening: pre dispatch r_no_0=%d\n", op_w.r_no_0);
+    opening_demo_jp[op_w.r_no_0]();
+    OSReport("[3SX] oh_opening: post dispatch, pre Bg_Family\n");
+    Bg_Family_Set_op();
+    OSReport("[3SX] oh_opening: done\n");
+    return op_end_flag;
+}
+
 s16 OPBG_Move(s32 /* unused */) {
     s16 flag = 0;
 
+    OSReport("[3SX] OPBG_Move: pre oh_opening_demo r_no_1=%d\n", op_w.r_no_1);
     flag = oh_opening_demo();
+    OSReport("[3SX] OPBG_Move: post oh, pre Trans\n");
     OPBG_Trans();
+    OSReport("[3SX] OPBG_Move: post Trans\n");
     return flag;
 }
 
@@ -296,7 +311,7 @@ void OPBG_Trans() {
     }
 
     ppgSetupCurrentDataList(&ppgOpnBgList);
-    Scrn_Renew();
+    ppgSetupCurrentPaletteNumber(NULL, 0);    Scrn_Renew();
     Irl_Family();
     Irl_Scrn();
     scr_calc(0);
@@ -420,14 +435,7 @@ void op_work_clear() {
     }
 }
 
-s16 oh_opening_demo() {
-    void (*opening_demo_jp[3])() = { opening_init2, opening_move, opening_title };
 
-    Game_timer += 1;
-    opening_demo_jp[op_w.r_no_0]();
-    Bg_Family_Set_op();
-    return op_end_flag;
-}
 
 void opening_init2() {
     Game_timer = 0;
@@ -552,9 +560,13 @@ void opening_move() {
 
 void op_100_move() {
     op_w.r_no_1 += 1;
+    OSReport("[3SX] op_100: pre Go_BGM\n");
     Go_BGM();
+    OSReport("[3SX] op_100: pre Disp_Sound_Code\n");
     Disp_Sound_Code();
+    OSReport("[3SX] op_100: pre op_101_move\n");
     op_101_move();
+    OSReport("[3SX] op_100: done\n");
 }
 
 const s16 op_101_sound[2] = { 0, 11 };
@@ -563,12 +575,18 @@ void op_101_move() {
     switch (op_w.r_no_2) {
     case 0:
         op_w.r_no_2 += 1;
+        OSReport("[3SX] op_101 c0: pre ToneDown\n");
         ToneDown(0xFF, 0);
+        OSReport("[3SX] op_101 c0: pre op_bg_move\n");
         op_bg_move(0);
+        OSReport("[3SX] op_101 c0: pre F6_init(0)\n");
         effect_F6_init(0);
+        OSReport("[3SX] op_101 c0: pre F6_init(1)\n");
         effect_F6_init(1);
         op_obj_disp = 0;
+        OSReport("[3SX] op_101 c0: pre 48_init(0)\n");
         effect_48_init(0);
+        OSReport("[3SX] op_101 c0: done\n");
         break;
 
     case 1:

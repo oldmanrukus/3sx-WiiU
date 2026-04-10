@@ -7,6 +7,8 @@
 
 #include "rendering/game_renderer.h"
 
+#include <coreinit/debug.h>
+
 void flPS2SetClearColor(u32 col);
 s32 flPS2SendTextureRegister(u32 th);
 
@@ -66,22 +68,26 @@ s32 flPS2SendTextureRegister(u32 th) {
 s32 flPS2SetTextureRegister(u32 th, u64* texA, u64* tex1, u64* tex0, u64* clamp, u64* miptbp1, u64* miptbp2,
                             u32 render_ope) {
     FLTexture* lpflTexture;
-    Renderer_SetTexture(th);
 
     // FIXME: make sure these checks are made in Renderer_SetTexture
 
-    lpflTexture = &flTexture[LO_16_BITS(th) - 1];
-
     if (!LO_16_BITS(th) || (LO_16_BITS(th) > FL_TEXTURE_MAX)) {
-        flPS2SystemError(0, "ERROR flPS2SetTextureRegister flps2render.c 1");
+        static int tex_err1 = 0;
+        if (tex_err1 < 5) { OSReport("[3SX] WARN flPS2SetTextureRegister: bad tex handle lo=%u (max=%d), skipping draw\n", LO_16_BITS(th), FL_TEXTURE_MAX); tex_err1++; }
+        return 0;
     }
+
+    lpflTexture = &flTexture[LO_16_BITS(th) - 1];
 
     if (lpflTexture->desc & 0x4) {
         if (!HI_16_BITS(th) || HI_16_BITS(th) > FL_PALETTE_MAX) {
-            flPS2SystemError(0, "ERROR flPS2SetTextureRegister flps2render.c 2");
+            static int tex_err2 = 0;
+            if (tex_err2 < 5) { OSReport("[3SX] WARN flPS2SetTextureRegister: bad pal handle hi=%u (max=%d) for tex lo=%u desc=0x%x, skipping draw\n", HI_16_BITS(th), FL_PALETTE_MAX, LO_16_BITS(th), lpflTexture->desc); tex_err2++; }
+            return 0;
         }
     }
 
+    Renderer_SetTexture(th);
     return 1;
 }
 

@@ -201,6 +201,19 @@ void init_trans_color_ram(s16 id, s16 key, u8 type, u16 data) {
     s16 j;
     s32 size;
 
+#if defined(TARGET_WIIU)
+    /* AFS color files are arrays of LE-packed u16 ABGR1555 values.
+       On big-endian, byte-swap the entire buffer before any u16 reads.
+       Skip non-color types (8, 10 = sound data; 0xb, 0xc, 0x61 = no-ops). */
+    if (type >= 1 && type <= 7) {
+        s32 bufsize = Get_size_data_ramcnt_key(key);
+        u16* buf = (u16*)Get_ramcnt_address(key);
+        for (i = 0; i < bufsize / 2; i++) {
+            buf[i] = ((buf[i] >> 8) & 0xFF) | ((buf[i] & 0xFF) << 8);
+        }
+    }
+#endif
+
     switch (type) {
     case 1:
         plcol[id] = (COL*)Get_ramcnt_address(key);

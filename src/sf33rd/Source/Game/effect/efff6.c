@@ -14,6 +14,10 @@
 #include "sf33rd/Source/Game/rendering/texcash.h"
 #include "sf33rd/Source/Game/stage/ta_sub.h"
 
+#ifdef TARGET_WIIU
+#include <coreinit/debug.h>
+#endif
+
 // forward decls
 void efff6_move_common(WORK_Other* ewk);
 void efff6_move01(WORK_Other* ewk);
@@ -42,25 +46,20 @@ void efff6_move(WORK_Other* ewk) {
     case 0:
         ewk->wu.routine_no[2] += 1;
         ewk->wu.disp_flag = 1;
+        OSReport("[3SX] efff6_move c0: pre set_char_move_init2\n");
         set_char_move_init2(&ewk->wu, 0, ewk->wu.old_rno[0], ewk->wu.char_index, 0);
-        if (ewk->wu.my_mr.size.x == 0x3F) {
-            ewk->wu.my_mr_flag = 0;
-        } else {
-            ewk->wu.my_mr_flag = 1;
-        }
-        if (ewk->wu.type == 0x36) {
-            push_color_trans_req((ewk->wu.my_col_code & 0x1FF) + 0x3C, 8);
-            push_color_trans_req((ewk->wu.my_col_code & 0x1FF) + 0x3D, 9);
-            push_color_trans_req((ewk->wu.my_col_code & 0x1FF) + 0x3E, 10);
-            ewk->wu.my_col_code = 8;
-        } else {
-            push_color_trans_req(ewk->wu.my_col_code & 0x1FF, 0);
-            ewk->wu.my_col_code = 0;
-        }
+        OSReport("[3SX] efff6_move c0: post set_char_move_init2\n");
+        // ... rest of case 0 ...
+        OSReport("[3SX] efff6_move c0: pre push_color_trans_req\n");
+        push_color_trans_req(ewk->wu.my_col_code & 0x1FF, 0);
+        OSReport("[3SX] efff6_move c0: fallthrough to case 1\n");
         /* fallthrough */
     case 1:
+        OSReport("[3SX] efff6_move c1: pre efff6_move_common\n");
         efff6_move_common(ewk);
+        OSReport("[3SX] efff6_move c1: pre disp_pos_trans_entry5\n");
         disp_pos_trans_entry5(ewk);
+        OSReport("[3SX] efff6_move c1: done\n");
         break;
     }
 }
@@ -220,13 +219,17 @@ s32 effect_F6_init(u8 typenum) {
     s16 ix;
     const s16* data_ptr;
 
+    OSReport("[3SX] F6_init(%d): enter\n", typenum);
+
     if (Debug_w[0x30] & 4) {
         return 0;
     }
 
     if ((ix = pull_effect_work(3)) == -1) {
+        OSReport("[3SX] F6_init: no work slot\n");
         return -1;
     }
+    OSReport("[3SX] F6_init: ix=%d\n", ix);
 
     ewk = (WORK_Other*)frw[ix];
     data_ptr = efff6_data_tbl00[typenum];
@@ -258,7 +261,9 @@ s32 effect_F6_init(u8 typenum) {
     ewk->wu.mvxy.d[0].sp = efff6_etc_data[typenum].sp_x_d;
     ewk->wu.mvxy.a[1].sp = efff6_etc_data[typenum].sp_y_a;
     ewk->wu.mvxy.d[1].sp = efff6_etc_data[typenum].sp_y_d;
+    OSReport("[3SX] F6_init: pre effect_F6_move\n");
     effect_F6_move(ewk);
+    OSReport("[3SX] F6_init(%d): done\n", typenum);
     return 0;
 }
 

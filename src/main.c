@@ -143,6 +143,7 @@ typedef enum MainPhase {
 s32 system_init_level;
 MPP mpp_w;
 Configuration configuration = { 0 };
+int loop_frame = 0;
 
 static u8 dctex_linear_mem[0x800];
 static u8 texcash_melt_buffer_mem[0x1000];
@@ -201,11 +202,13 @@ void Game_Task_wiiu(struct _TASK* task_ptr) {
         /* Dispatch game logic */
         if (nowSoftReset() == 0) {
             void (*Main_Jmp_Tbl[3])(struct _TASK*) = { Wait_Auto_Load, Loop_Demo, Game };
-            Main_Jmp_Tbl[G_No[0]](task_ptr);
+            OSReport("[3SX] GT: G_No=%d,%d f=%d\n", G_No[0], G_No[1], loop_frame); Main_Jmp_Tbl[G_No[0]](task_ptr); OSReport("[3SX] GT: done f=%d\n", loop_frame);
         }
 
         seqsAfterProcess();
+        if (loop_frame >= 1575) OSReport("[3SX] GT: pre texture_cash_update f=%d\n", loop_frame);
         texture_cash_update();
+        if (loop_frame >= 1575) OSReport("[3SX] GT: post texture_cash_update f=%d\n", loop_frame);
         move_pulpul_work();
         Check_LDREQ_Queue();
     }
@@ -324,7 +327,9 @@ static void cpLoopTask() {
         switch (task_ptr->condition) {
         case 1:
             if (task_ptr->func_adrs) {
+                if (loop_frame >= 180) OSReport("[3SX] cpLoop: task[%d] enter\n", i);
                 task_ptr->func_adrs(task_ptr);
+                if (loop_frame >= 180) OSReport("[3SX] cpLoop: task[%d] exit\n", i);
             }
             break;
 
@@ -447,14 +452,14 @@ static void game_step_0() {
 
     mpp_w.inGame = false;
 
-    njUserMain();
-    seqsBeforeProcess();
-    njdp2d_draw();
-    seqsAfterProcess();
+    { static int gs0 = 0; if (gs0 < 3 || loop_frame > 170) OSReport("[3SX] gs0: njUserMain f=%d\n", loop_frame); gs0++; } njUserMain();
+    { static int gs1 = 0; if (gs1 < 3 || loop_frame > 170) OSReport("[3SX] gs0: seqsBefore f=%d\n", loop_frame); gs1++; } seqsBeforeProcess();
+    { static int gs2 = 0; if (gs2 < 3 || loop_frame > 170) OSReport("[3SX] gs0: njdp2d f=%d\n", loop_frame); gs2++; } njdp2d_draw();
+    { static int gs3 = 0; if (gs3 < 3 || loop_frame > 170) OSReport("[3SX] gs0: seqsAfter f=%d\n", loop_frame); gs3++; } seqsAfterProcess();
 
     KnjFlush();
     disp_effect_work();
-    flFlip(0);
+    { static int gs5 = 0; if (gs5 < 3 || loop_frame > 170) OSReport("[3SX] gs0: flFlip f=%d\n", loop_frame); gs5++; } flFlip(0);
 }
 
 static void game_step_1() {
@@ -490,7 +495,6 @@ static bool sdl_poll_helper() {
 #endif
 }
 
-static int loop_frame = 0;
 
 static int loop() {
     bool is_running = true;
@@ -532,6 +536,7 @@ static int loop() {
             if (!is_running) break;
 
             loop_frame++;
+            if (loop_frame % 60 == 0) OSReport("[3SX] frame %d\n", loop_frame);
 
 #if defined(__WIIU__)
             if (loop_frame % 120 == 1) {

@@ -1,5 +1,6 @@
 #include "sf33rd/AcrSDK/ps2/flps2vram.h"
 #include "common.h"
+#include <coreinit/debug.h>
 #include "sf33rd/AcrSDK/common/memfound.h"
 #include "sf33rd/AcrSDK/common/plcommon.h"
 #include "sf33rd/AcrSDK/common/prilay.h"
@@ -166,7 +167,9 @@ u32 flPS2GetTextureHandle() {
     }
 
     if (i == FL_TEXTURE_MAX) {
-        flPS2SystemError(0, "ERROR flPS2GetTextureHandle flps2vram.c");
+        static int th_err = 0;
+        if (th_err < 5) { OSReport("[3SX] WARN flPS2GetTextureHandle: all %d slots full!\n", FL_TEXTURE_MAX); th_err++; }
+        return 0;
     }
 
     return i + 1;
@@ -262,7 +265,9 @@ u32 flPS2GetPaletteHandle() {
     }
 
     if (i == FL_PALETTE_MAX) {
-        flPS2SystemError(0, "ERROR flPS2GetPaletteHandle flps2vram.c");
+        static int ph_err = 0;
+        if (ph_err < 5) { OSReport("[3SX] WARN flPS2GetPaletteHandle: all %d slots full!\n", FL_PALETTE_MAX); ph_err++; }
+        return 0;
     }
 
     return (i + 1) << 16;
@@ -272,7 +277,9 @@ s32 flReleaseTextureHandle(u32 texture_handle) {
     FLTexture* lpflTexture = &flTexture[texture_handle - 1];
 
     if ((texture_handle == 0) || (texture_handle > FL_TEXTURE_MAX) || (lpflTexture->be_flag == 0)) {
-        flPS2SystemError(0, "ERROR flReleaseTextureHandle flps2vram.c");
+        static int rt_err = 0;
+        if (rt_err < 5) { OSReport("[3SX] WARN flReleaseTextureHandle: bad handle %u (max=%d be=%d), skipping\n", texture_handle, FL_TEXTURE_MAX, (texture_handle > 0 && texture_handle <= FL_TEXTURE_MAX) ? lpflTexture->be_flag : -1); rt_err++; }
+        return 0;
     }
 
     Renderer_DestroyTexture(texture_handle);
@@ -289,7 +296,9 @@ s32 flReleasePaletteHandle(u32 palette_handle) {
     FLTexture* lpflPalette = &flPalette[palette_handle - 1];
 
     if ((palette_handle == 0) || (palette_handle > FL_PALETTE_MAX) || (lpflPalette->be_flag == 0)) {
-        flPS2SystemError(0, "ERROR flReleasePaletteHandle flps2vram.c");
+        static int rp_err = 0;
+        if (rp_err < 5) { OSReport("[3SX] WARN flReleasePaletteHandle: bad handle %u (max=%d be=%d), skipping\n", palette_handle, FL_PALETTE_MAX, (palette_handle > 0 && palette_handle <= FL_PALETTE_MAX) ? lpflPalette->be_flag : -1); rp_err++; }
+        return 0;
     }
 
     Renderer_DestroyPalette(palette_handle);

@@ -26,6 +26,94 @@
 #define HI_2_BYTES(_val) (((s16*)&_val)[1])
 #define WK_AS_PLW ((PLW*)wk)
 
+#ifdef TARGET_WIIU
+#include <coreinit/debug.h>
+/*
+ * char_table data was extracted from PS2 (little-endian) binary as raw u32 values.
+ * These u32s contain packed struct fields (u16, s16, u8 etc).
+ * On PS2 LE, copying u32s directly into struct memory via pointer cast works
+ * because the byte layout matches. On Wii U (big-endian PPC), the struct field
+ * positions within each u32 are reversed, so we must extract fields using LE
+ * bit positions and write them to struct fields individually.
+ *
+ * LE u32 packing for struct at address P:
+ *   byte[0] is at bits 0-7, byte[1] at bits 8-15, byte[2] at 16-23, byte[3] at 24-31
+ * So for {u16_a, u16_b}: u32 = (b << 16) | a
+ * For {u8_a, u8_b, u16_c}: u32 = (c << 16) | (b << 8) | a
+ * For {u8_a, u8_b, u8_c, u8_d}: u32 = (d << 24) | (c << 16) | (b << 8) | a
+ */
+
+/* Extract UNK11 fields from two LE-packed u32 values */
+static inline void chartable_read_unk11(const u32* src, UNK11* out) {
+    u32 w0 = src[0];
+    u32 w1 = src[1];
+    out->code = (u16)(w0 & 0xFFFF);
+    out->koc  = (s16)((w0 >> 16) & 0xFFFF);
+    out->ix   = (s16)(w1 & 0xFFFF);
+    out->pat  = (s16)((w1 >> 16) & 0xFFFF);
+}
+
+/*
+ * Copy char_table header (2 u32s before data start) into WORK struct fields.
+ * src[-2] on LE = {s16 cgd_type, u8 pat_status, u8 kind_of_waza}
+ * src[-1] on LE = {u8 hit_range, u8 total_paring, u8 total_att_set, u8 sp_tech_id}
+ */
+static inline void chartable_read_header(const u32* src, WORK* wk) {
+    u32 w0 = src[-2];
+    u32 w1 = src[-1];
+    wk->cgd_type      = (s16)(w0 & 0xFFFF);
+    wk->pat_status     = (u8)((w0 >> 16) & 0xFF);
+    wk->kind_of_waza   = (u8)((w0 >> 24) & 0xFF);
+    wk->hit_range      = (u8)(w1 & 0xFF);
+    wk->total_paring   = (u8)((w1 >> 8) & 0xFF);
+    wk->total_att_set  = (u8)((w1 >> 16) & 0xFF);
+    wk->sp_tech_id     = (u8)((w1 >> 24) & 0xFF);
+}
+
+/*
+ * Copy char_table data entries into cg_ fields in WORK struct.
+ * Layout depends on cgd_type (2, 4, or 6 u32s per entry).
+ *
+ * dst[0] on LE = {u8 cg_type, u8 cg_ctr, u16 cg_se}
+ * dst[1] on LE = {u16 cg_olc_ix, u16 cg_number}
+ * dst[2] on LE = {u16 cg_hit_ix, s16 cg_att_ix}
+ * dst[3] on LE = {u8 cg_extdat, u8 cg_cancel, u8 cg_effect, u8 cg_eftype}
+ * dst[4] on LE = {u16 cg_zoom, u16 cg_rival}
+ * dst[5] on LE = {u16 cg_add_xy, u8 cg_next_ix, u8 cg_status}
+ */
+static inline void chartable_read_data(const u32* src, WORK* wk, s16 count) {
+    u32 w;
+    if (count >= 2) {
+        w = src[0];
+        wk->cg_type   = (u8)(w & 0xFF);
+        wk->cg_ctr    = (u8)((w >> 8) & 0xFF);
+        wk->cg_se     = (u16)((w >> 16) & 0xFFFF);
+        w = src[1];
+        wk->cg_olc_ix = (u16)(w & 0xFFFF);
+        wk->cg_number = (u16)((w >> 16) & 0xFFFF);
+    }
+    if (count >= 4) {
+        w = src[2];
+        wk->cg_hit_ix = (u16)(w & 0xFFFF);
+        wk->cg_att_ix = (s16)((w >> 16) & 0xFFFF);
+        w = src[3];
+        wk->cg_extdat = (u8)(w & 0xFF);
+        wk->cg_cancel = (u8)((w >> 8) & 0xFF);
+        wk->cg_effect = (u8)((w >> 16) & 0xFF);
+        wk->cg_eftype = (u8)((w >> 24) & 0xFF);
+    }
+    if (count >= 6) {
+        w = src[4];
+        wk->cg_zoom   = (u16)(w & 0xFFFF);
+        wk->cg_rival  = (u16)((w >> 16) & 0xFFFF);
+        w = src[5];
+        wk->cg_add_xy  = (u16)(w & 0xFFFF);
+        wk->cg_next_ix = (u8)((w >> 16) & 0xFF);
+        wk->cg_status  = (u8)((w >> 24) & 0xFF);
+    }
+}
+#endif /* TARGET_WIIU */
+
 u16 att_req = 0;
 
 extern s32 (*const decode_chcmd[125])();
@@ -101,6 +189,24 @@ void set_char_move_init(WORK* wk, s16 koc, s16 index) {
 }
 
 void setupCharTableData(WORK* wk, s32 clr, s32 info) {
+#ifdef TARGET_WIIU
+    u32* src;
+    if (info != 0) {
+        src = wk->set_char_ad;
+        chartable_read_header(src, wk);
+        if (clr != 0) {
+            /* Clear cg_ data fields (6 u32s worth) */
+            u32* dst = (u32*)&wk->cg_type;
+            s32 i;
+            for (i = 0; i < 6; i++) {
+                dst[i] = 0;
+            }
+        }
+    } else {
+        src = wk->set_char_ad + wk->cg_ix;
+        chartable_read_data(src, wk, wk->cgd_type);
+    }
+#else
     u32* dst = (u32*)&wk->cg_type;
     u32* src;
     s32 i;
@@ -122,6 +228,7 @@ void setupCharTableData(WORK* wk, s32 clr, s32 info) {
             dst[i] = src[i];
         }
     }
+#endif
 }
 
 void set_char_move_init2(WORK* wk, s16 koc, s16 index, s16 ip, s16 scf) {
@@ -370,7 +477,13 @@ s32 char_move_cmms3(PLW* wk) {
 #endif
 
     while (1) {
+#ifdef TARGET_WIIU
+        UNK11 cpc_le;
+        chartable_read_unk11(wk->wu.set_char_ad + wk->wu.cg_ix, &cpc_le);
+        cpc = &cpc_le;
+#else
         cpc = (UNK11*)(wk->wu.set_char_ad + wk->wu.cg_ix);
+#endif
 
         if (cpc->code >= 0x100) {
             break;
@@ -419,6 +532,30 @@ void char_move(WORK* wk) {
 }
 
 void check_cm_extended_code(WORK* wk) {
+#ifdef TARGET_WIIU
+    UNK11 cpc_le;
+
+    if (wk->cg_next_ix) {
+        wk->cg_ix = (wk->cg_next_ix - 1) * wk->cgd_type;
+    } else {
+        wk->cg_ix += wk->cgd_type;
+    }
+
+    while (1) {
+        chartable_read_unk11(wk->set_char_ad + wk->cg_ix, &cpc_le);
+
+        if (cpc_le.code >= 0x100) {
+            check_cgd_patdat(wk);
+            break;
+        }
+
+        if (decode_chcmd[cpc_le.code](wk, &cpc_le) == 0) {
+            break;
+        }
+
+        wk->cg_ix += wk->cgd_type;
+    }
+#else
     UNK11* cpc;
 
     if (wk->cg_next_ix) {
@@ -441,6 +578,7 @@ void check_cm_extended_code(WORK* wk) {
 
         wk->cg_ix += wk->cgd_type;
     }
+#endif
 }
 
 s32 comm_dummy(WORK* /* unused */, UNK11* /* unused */) {

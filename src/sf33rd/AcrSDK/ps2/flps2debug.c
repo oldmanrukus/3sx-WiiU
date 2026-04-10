@@ -1,4 +1,5 @@
 #include "sf33rd/AcrSDK/ps2/flps2debug.h"
+#include <coreinit/debug.h>
 #include "common.h"
 #include "sf33rd/AcrSDK/common/memfound.h"
 #include "sf33rd/AcrSDK/common/mlPAD.h"
@@ -82,9 +83,14 @@ void flPS2SystemError(s32 error_level, s8* format, ...) {
     va_list args;
     s8 str[512];
 
-    flFlip(0);
     va_start(args, format);
     vsprintf(str, format, args);
+    va_end(args);
+
+    /* Print the error so it always appears in the Cemu log */
+    OSReport("[3SX] *** flPS2SystemError (level=%d): %s ***\n", error_level, str);
+
+    flFlip(0);
 
     while (1) {
         flPrintL(10, 20, "%s", str);

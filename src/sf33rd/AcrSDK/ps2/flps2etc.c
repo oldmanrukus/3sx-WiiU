@@ -1,5 +1,6 @@
 #include "sf33rd/AcrSDK/ps2/flps2etc.h"
 #include "common.h"
+#include <coreinit/debug.h>
 #include "port/utils.h"
 #include "sf33rd/AcrSDK/common/fbms.h"
 #include "sf33rd/AcrSDK/common/memfound.h"
@@ -179,7 +180,8 @@ u32 flPS2GetSystemMemoryHandle(s32 len, s32 type) {
         handle = mflRegister(len);
 
         if (handle == 0) {
-            flPS2SystemError(0, "ERROR flPS2GetSystemMemoryHandle flps2etc.c");
+            static int mh_err = 0;
+            if (mh_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: alloc failed len=%u\n", len); mh_err++; }
             return 0;
         }
     }
@@ -238,7 +240,8 @@ uintptr_t flPS2GetSystemTmpBuff(s32 len, s32 align) {
     new_now = now + len;
 
     if (flPs2State.SystemTmpBuffEndAdrs < new_now) {
-        flPS2SystemError(0, "ERROR flPS2GetSystemTmpBuff flps2etc.c");
+        static int tb_err = 0;
+        if (tb_err < 5) { OSReport("[3SX] WARN flPS2GetSystemTmpBuff: overflow len=%d, resetting to start\n", len); tb_err++; }
         now = flPs2State.SystemTmpBuffStartAdrs;
         new_now = now + len;
     }

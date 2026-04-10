@@ -329,6 +329,14 @@ s32 ppgWriteQuadUseTrans(Vertex* pos, u32 col, PPGDataList* tb, s32 tix, s32 cix
             for (i = 0; i < transTotal; i++) {
                 if (ix_ofs & 0x4000) {
                     palhan = phan[*tran + pal];
+                    if (palhan == 0 && i == 0) {
+                        static int tpal_dbg = 0;
+                        if (tpal_dbg < 5) {
+                            OSReport("[3SX] WARN ppgWriteQuadUseTrans(trans): palhan=0, tran_idx=%d pal=%d, tb->pal->total=%d\n",
+                                *tran, pal, tb->pal ? tb->pal->total : -1);
+                            tpal_dbg++;
+                        }
+                    }
                 }
 
                 tran++;
@@ -383,6 +391,17 @@ s32 ppgWriteQuadUseTrans(Vertex* pos, u32 col, PPGDataList* tb, s32 tix, s32 cix
     if (ix_ofs & 0x4000) {
         if (cix < 0) {
             palhan = ppg_w.hanPal;
+            if (palhan == 0) {
+                static int pal_dbg = 0;
+                if (pal_dbg < 10) {
+                    OSReport("[3SX] WARN ppgWriteQuadUseTrans: palhan=0 (ppg_w.hanPal=0), tix=%d, texhan=%u, tb->pal=%p\n",
+                        tix, texhan, (void*)tb->pal);
+                    if (tb->pal && tb->pal->handle) {
+                        OSReport("[3SX]   pal->total=%d pal->handle[0]=%u\n", tb->pal->total, tb->pal->handle[0]);
+                    }
+                    pal_dbg++;
+                }
+            }
         } else {
             palhan = phan[cix];
         }
