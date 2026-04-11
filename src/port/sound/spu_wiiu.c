@@ -1,38 +1,32 @@
 /**
  * @file spu_wiiu.c
- * @brief Wii U SPU audio output — replaces SDL audio in spu.c
+ * @brief Wii U SPU audio — SDL2 callback output
  *
  * The SPU emulation logic (ADPCM decode, ADSR envelope, voice mixing)
  * is pure C math from the original spu.c. This file replaces only the
- * audio OUTPUT path: instead of SDL_AudioStream, we use an AXVoice
- * that pulls samples via a callback.
+ * audio OUTPUT path: instead of SDL3 AudioStream, we use SDL2 callback.
  *
  * Architecture:
- *   - AX callback runs on the audio thread at ~3ms intervals
- *   - Callback calls SPU_Tick() to generate samples into a ring buffer
- *   - AXVoice plays from the ring buffer continuously
+ *   - SDL2 audio callback runs on the audio thread
+ *   - Callback calls SPU_Tick() to generate samples directly
+ *   - EML timer callback runs at 250 Hz within the audio callback
  */
 #include "port/sound/spu.h"
 #include "common.h"
 
-#include <sndcore2/core.h>
-#include <sndcore2/voice.h>
-#include <sndcore2/drcvs.h>
-#include <coreinit/cache.h>
+#include <SDL2/SDL.h>
 #include <coreinit/debug.h>
 #include <coreinit/mutex.h>
-#include <coreinit/memdefaultheap.h>
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /* ======================================
  * Constants
  * ====================================== */
 
 #define SPU_SAMPLE_RATE 48000
-#define RING_BUFFER_SAMPLES 4096  /* Must be power of 2 */
-#define RING_BUFFER_MASK (RING_BUFFER_SAMPLES - 1)
 
 /* ======================================
  * SPU Voice state (from original spu.c)
@@ -95,19 +89,6 @@ static u16 ram[(2 * 1024 * 1024) >> 1];
 static s16 adpcm_coefs[5][2] = {
     { 0, 0 }, { 60, 0 }, { 115, -52 }, { 98, -55 }, { 122, -60 },
 };
-
-/* AX voice for output */
-static AXVoice* ax_voice_l = NULL;
-static AXVoice* ax_voice_r = NULL;
-
-/* Ring buffer for generated samples (interleaved L/R s16) */
-static s16* ring_buffer = NULL;
-static volatile uint32_t ring_write_pos = 0;
-static volatile uint32_t ring_read_pos = 0;
-
-/* Separate L/R buffers for AX (it wants mono per voice) */
-static s16* ax_buffer_l = NULL;
-static s16* ax_buffer_r = NULL;
 
 /* ======================================
  * SPU core logic (identical to original spu.c)
@@ -324,6 +305,7 @@ void SPU_VoiceSetConf(int vnum, struct SPUVConf* conf) {
 }
 
 void SPU_VoiceStart(int vnum, u32 start_addr) {
+    { static int vs_dbg = 0; if (vs_dbg < 5) { OSReport("[3SX] SPU_VoiceStart: v=%d addr=0x%X\n", vnum, start_addr); vs_dbg++; } }
     struct SPU_Voice* v = &voices[vnum];
     u16 header;
 
@@ -342,140 +324,32 @@ void SPU_VoiceStart(int vnum, u32 start_addr) {
 }
 
 void SPU_Upload(u32 dst, void* src, u32 size) {
+    { static int su_dbg = 0; if (su_dbg < 3) { OSReport("[3SX] SPU_Upload: dst=0x%X size=%u\n", dst, size); su_dbg++; } }
     OSLockMutex(&spu_mutex);
     memcpy(&ram[dst >> 1], src, size);
     OSUnlockMutex(&spu_mutex);
 }
 
 /* ======================================
- * AX audio callback
- *
- * Called by the AX audio system every ~3ms.
- * Generates SPU samples and feeds them to AX voice buffers.
- * ====================================== */
-
-static void ax_frame_callback(void) {
-    /* AX runs at 48000 Hz, callback every 3ms = 144 samples per call */
-    const int samples_per_callback = 144;
-
-    OSLockMutex(&spu_mutex);
-
-    /* EML timer callback at 250 Hz (48000/250 = 192 samples between calls) */
-    static int cb_timer = 192;
-
-    for (int i = 0; i < samples_per_callback; i++) {
-        s16 out[2];
-        SPU_Tick(out);
-
-        uint32_t wp = ring_write_pos & RING_BUFFER_MASK;
-        ax_buffer_l[wp] = out[0];
-        ax_buffer_r[wp] = out[1];
-        ring_write_pos++;
-
-        cb_timer--;
-        if (!cb_timer) {
-            if (timer_cb) timer_cb();
-            cb_timer = 192;
-        }
-    }
-
-    OSUnlockMutex(&spu_mutex);
-
-    /* Flush CPU cache so AX DMA can read the buffers */
-    DCFlushRange(ax_buffer_l, RING_BUFFER_SAMPLES * sizeof(s16));
-    DCFlushRange(ax_buffer_r, RING_BUFFER_SAMPLES * sizeof(s16));
-}
-
-/* ======================================
  * Initialization
  * ====================================== */
 
+static SDL_AudioDeviceID spu_audio_device = 0;
+
 static void nullcb(void) {}
+
+/* Defined in adx_wiiu.c — registers SPU timer with the shared audio callback */
+extern void ADX_RegisterSPUCallback(void (*cb)(void));
 
 void SPU_Init(void (*cb)()) {
     timer_cb = cb ? cb : nullcb;
     memset(voices, 0, sizeof(voices));
     OSInitMutex(&spu_mutex);
 
-    /* Allocate AX sample buffers in MEM2 (DMA-accessible) */
-    ax_buffer_l = (s16*)MEMAllocFromDefaultHeapEx(
-        RING_BUFFER_SAMPLES * sizeof(s16), 64);
-    ax_buffer_r = (s16*)MEMAllocFromDefaultHeapEx(
-        RING_BUFFER_SAMPLES * sizeof(s16), 64);
-    memset(ax_buffer_l, 0, RING_BUFFER_SAMPLES * sizeof(s16));
-    memset(ax_buffer_r, 0, RING_BUFFER_SAMPLES * sizeof(s16));
+    /* Register the EML timer callback with ADX's audio callback.
+       SDL2-wiiu only supports one audio device, so SPU piggybacks
+       on ADX's existing SDL audio callback for both mixing and timer. */
+    ADX_RegisterSPUCallback(timer_cb);
 
-    /* Initialize AX audio system (may already be init'd by SDL audio) */
-    if (!AXIsInit()) {
-        AXInitParams init_params = {
-            .renderer = AX_INIT_RENDERER_48KHZ,
-            .pipeline = AX_INIT_PIPELINE_SINGLE,
-        };
-        AXInitWithParams(&init_params);
-    }
-
-    /* Register our frame callback */
-    AXRegisterAppFrameCallback(ax_frame_callback);
-
-    /* Acquire a voice for left channel */
-    ax_voice_l = AXAcquireVoice(31, NULL, NULL);
-    if (ax_voice_l) {
-        AXVoiceBegin(ax_voice_l);
-
-        AXVoiceOffsets offsets = {
-            .dataType   = AX_VOICE_FORMAT_LPCM16,
-            .loopingEnabled = AX_VOICE_LOOP_ENABLED,
-            .loopOffset = 0,
-            .endOffset  = RING_BUFFER_SAMPLES - 1,
-            .currentOffset = 0,
-            .data       = ax_buffer_l,
-        };
-        AXSetVoiceOffsets(ax_voice_l, &offsets);
-
-        /* Full volume, centered pan for L channel → left speaker */
-        AXVoiceVeData ve = { .volume = 0x8000 };
-        AXSetVoiceVe(ax_voice_l, &ve);
-
-        AXVoiceDeviceMixData mix[6] = { 0 };
-        mix[0].bus[0].volume = 0x8000; /* Left speaker */
-        AXSetVoiceDeviceMix(ax_voice_l, AX_DEVICE_TYPE_TV, 0, mix);
-        AXSetVoiceDeviceMix(ax_voice_l, AX_DEVICE_TYPE_DRC, 0, mix);
-
-        AXSetVoiceSrcType(ax_voice_l, AX_VOICE_SRC_TYPE_NONE);
-        AXSetVoiceState(ax_voice_l, AX_VOICE_STATE_PLAYING);
-
-        AXVoiceEnd(ax_voice_l);
-    }
-
-    /* Acquire a voice for right channel */
-    ax_voice_r = AXAcquireVoice(31, NULL, NULL);
-    if (ax_voice_r) {
-        AXVoiceBegin(ax_voice_r);
-
-        AXVoiceOffsets offsets = {
-            .dataType   = AX_VOICE_FORMAT_LPCM16,
-            .loopingEnabled = AX_VOICE_LOOP_ENABLED,
-            .loopOffset = 0,
-            .endOffset  = RING_BUFFER_SAMPLES - 1,
-            .currentOffset = 0,
-            .data       = ax_buffer_r,
-        };
-        AXSetVoiceOffsets(ax_voice_r, &offsets);
-
-        AXVoiceVeData ve = { .volume = 0x8000 };
-        AXSetVoiceVe(ax_voice_r, &ve);
-
-        AXVoiceDeviceMixData mix[6] = { 0 };
-        mix[0].bus[0].volume = 0x0000; /* No left */
-        mix[1].bus[0].volume = 0x8000; /* Right speaker */
-        AXSetVoiceDeviceMix(ax_voice_r, AX_DEVICE_TYPE_TV, 0, mix);
-        AXSetVoiceDeviceMix(ax_voice_r, AX_DEVICE_TYPE_DRC, 0, mix);
-
-        AXSetVoiceSrcType(ax_voice_r, AX_VOICE_SRC_TYPE_NONE);
-        AXSetVoiceState(ax_voice_r, AX_VOICE_STATE_PLAYING);
-
-        AXVoiceEnd(ax_voice_r);
-    }
-
-    OSReport("[3SX] SPU audio initialized with AX voices\n");
+    OSReport("[3SX] SPU audio initialized (mixed into ADX callback)\n");
 }

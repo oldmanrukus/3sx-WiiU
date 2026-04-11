@@ -7,6 +7,7 @@
  * callback thread (SDL/AX).
  */
 #include "port/sound/adx.h"
+#include "port/sound/spu.h"
 #include "port/io/afs.h"
 #include "port/utils.h"
 #include "sf33rd/Source/Game/io/gd3rd.h"
@@ -72,24 +73,47 @@ static void ring_write_stereo(int16_t l, int16_t r) {
 
 static void ring_clear(void) { ring_rpos = ring_wpos = 0; memset(ring_buf, 0, sizeof(ring_buf)); }
 
-static volatile int16_t peak_sample = 0;
+/* SPU timer callback — called at 250Hz from audio thread */
+static void (*spu_timer_cb)(void) = NULL;
+static int spu_cb_timer = 192; /* 48000/250 = 192 samples between timer calls */
 
 static void audio_callback(void* userdata, Uint8* stream, int len) {
     (void)userdata;
     int16_t* out = (int16_t*)stream;
-    int count = len / sizeof(int16_t);
-    int16_t local_peak = 0;
-    for (int i = 0; i < count; i++) {
+    int samples = len / sizeof(int16_t) / 2; /* stereo sample pairs */
+
+    for (int i = 0; i < samples; i++) {
+        /* ADX BGM from ring buffer */
+        int32_t l = 0, r = 0;
         if (ring_rpos != ring_wpos) {
-            out[i] = ring_buf[ring_rpos];
+            l = ring_buf[ring_rpos];
             ring_rpos = (ring_rpos + 1) & RING_MASK;
-            int16_t abs_val = out[i] < 0 ? -out[i] : out[i];
-            if (abs_val > local_peak) local_peak = abs_val;
-        } else {
-            out[i] = 0;
+            r = ring_buf[ring_rpos];
+            ring_rpos = (ring_rpos + 1) & RING_MASK;
+        }
+
+        /* SPU SFX — mix on top */
+        int16_t spu_out[2];
+        SPU_Tick(spu_out);
+        l += spu_out[0];
+        r += spu_out[1];
+
+        /* Clamp to s16 range */
+        if (l > 32767) l = 32767;
+        if (l < -32768) l = -32768;
+        if (r > 32767) r = 32767;
+        if (r < -32768) r = -32768;
+
+        out[i * 2]     = (int16_t)l;
+        out[i * 2 + 1] = (int16_t)r;
+
+        /* EML timer callback at 250 Hz */
+        spu_cb_timer--;
+        if (!spu_cb_timer) {
+            if (spu_timer_cb) spu_timer_cb();
+            spu_cb_timer = 192;
         }
     }
-    if (local_peak > peak_sample) peak_sample = local_peak;
 }
 
 static SDL_AudioDeviceID audio_device = 0;
@@ -271,8 +295,7 @@ void ADX_ProcessTracks(void) {
     {
         static int pt_log = 0;
         if ((pt_log++ % 60) == 0 && pt_log < 1200) {
-            OSReport("[3SX] PT: used=%d peak=%d tracks=%d\n", used, peak_sample, num_tracks);
-            peak_sample = 0;
+            OSReport("[3SX] PT: used=%d tracks=%d\n", used, num_tracks);
         }
     }
 
@@ -336,4 +359,9 @@ ADXState ADX_GetState(void) {
     if (!has_tracks || is_paused) return ADX_STATE_STOP;
     for (int i=0; i<num_tracks; i++) { int j=(first_track_index+i)%TRACKS_MAX; if (!track_exhausted(&tracks[j])) return ADX_STATE_PLAYING; }
     return ADX_STATE_PLAYEND;
+}
+
+/* Called by SPU_Init to register the EML timer callback */
+void ADX_RegisterSPUCallback(void (*cb)(void)) {
+    spu_timer_cb = cb;
 }
