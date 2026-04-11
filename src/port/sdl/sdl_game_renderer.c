@@ -360,6 +360,7 @@ void SDLGameRenderer_DestroyTexture(unsigned int texture_handle) {
 
 void SDLGameRenderer_CreatePalette(unsigned int ph) {
     const int palette_index = HI_16_BITS(ph) - 1;
+    if (palette_index < 0 || palette_index >= FL_PALETTE_MAX) return;
     const FLTexture* fl_palette = &flPalette[palette_index];
     const void* pixels = flPS2GetSystemBuffAdrs(fl_palette->mem_handle);
     const int color_count = fl_palette->width * fl_palette->height;
@@ -406,12 +407,14 @@ void SDLGameRenderer_CreatePalette(unsigned int ph) {
     }
 
     SDL_Palette* palette = SDL_CreatePalette(color_count);
+
     SDL_SetPaletteColors(palette, colors, 0, color_count);
     palettes[palette_index] = palette;
 }
 
 void SDLGameRenderer_DestroyPalette(unsigned int palette_handle) {
     const int palette_index = palette_handle - 1;
+    if (palette_index < 0 || palette_index >= FL_PALETTE_MAX) return;
 
     for (int i = 0; i < FL_TEXTURE_MAX; i++) {
         SDL_Texture** texture_p = &texture_cache[i][palette_handle];
@@ -430,9 +433,16 @@ void SDLGameRenderer_DestroyPalette(unsigned int palette_handle) {
 
 void SDLGameRenderer_SetTexture(unsigned int th) {
     const int texture_handle = LO_16_BITS(th);
-    SDL_Surface* surface = surfaces[texture_handle - 1];
     const int palette_handle = HI_16_BITS(th);
-    const SDL_Palette* palette = palette_handle != 0 ? palettes[palette_handle - 1] : NULL;
+
+    if (texture_handle <= 0 || texture_handle > FL_TEXTURE_MAX) return;
+    if (palette_handle > FL_PALETTE_MAX) return;
+
+    SDL_Surface* surface = surfaces[texture_handle - 1];
+    if (!surface) return;
+
+    const SDL_Palette* palette = (palette_handle > 0 && palette_handle <= FL_PALETTE_MAX)
+        ? palettes[palette_handle - 1] : NULL;
 
     if (dump_textures) {
         save_texture(surface, palette);
