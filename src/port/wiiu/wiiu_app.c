@@ -114,14 +114,10 @@ bool WiiUApp_PollEvents(void) {
         return false;
     }
 
-    /* Pump SDL events — SDL2-wiiu needs this for internal VPAD processing */
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            app_running = false;
-            return false;
-        }
-    }
+    /* Do NOT call SDL_PollEvent here — SDL2-wiiu's event pump
+       calls VPADRead internally, consuming the data before our
+       wiiu_pad.c VPADRead can get it. On real hardware, VPADRead
+       only returns data once per frame. */
 
     return true;
 }
