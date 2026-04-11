@@ -274,11 +274,13 @@ u32 flPS2GetPaletteHandle() {
 }
 
 s32 flReleaseTextureHandle(u32 texture_handle) {
+    if ((texture_handle == 0) || (texture_handle > FL_TEXTURE_MAX)) {
+        return 0;
+    }
+
     FLTexture* lpflTexture = &flTexture[texture_handle - 1];
 
-    if ((texture_handle == 0) || (texture_handle > FL_TEXTURE_MAX) || (lpflTexture->be_flag == 0)) {
-        static int rt_err = 0;
-        if (rt_err < 5) { OSReport("[3SX] WARN flReleaseTextureHandle: bad handle %u (max=%d be=%d), skipping\n", texture_handle, FL_TEXTURE_MAX, (texture_handle > 0 && texture_handle <= FL_TEXTURE_MAX) ? lpflTexture->be_flag : -1); rt_err++; }
+    if (lpflTexture->be_flag == 0) {
         return 0;
     }
 
@@ -293,11 +295,13 @@ s32 flReleaseTextureHandle(u32 texture_handle) {
 }
 
 s32 flReleasePaletteHandle(u32 palette_handle) {
+    if ((palette_handle == 0) || (palette_handle > FL_PALETTE_MAX)) {
+        return 0;
+    }
+
     FLTexture* lpflPalette = &flPalette[palette_handle - 1];
 
-    if ((palette_handle == 0) || (palette_handle > FL_PALETTE_MAX) || (lpflPalette->be_flag == 0)) {
-        static int rp_err = 0;
-        if (rp_err < 5) { OSReport("[3SX] WARN flReleasePaletteHandle: bad handle %u (max=%d be=%d), skipping\n", palette_handle, FL_PALETTE_MAX, (palette_handle > 0 && palette_handle <= FL_PALETTE_MAX) ? lpflPalette->be_flag : -1); rp_err++; }
+    if (lpflPalette->be_flag == 0) {
         return 0;
     }
 
@@ -312,11 +316,11 @@ s32 flReleasePaletteHandle(u32 palette_handle) {
 }
 
 s32 flLockTexture(Rect* lprect, u32 th, plContext* lpcontext, u32 flag) {
-    FLTexture* lpflTexture = &flTexture[th - 1];
-
-    if (th > FL_TEXTURE_MAX) {
+    if (th == 0 || th > FL_TEXTURE_MAX) {
         return 0;
     }
+
+    FLTexture* lpflTexture = &flTexture[th - 1];
 
     if (!lpflTexture->be_flag) {
         return 0;
@@ -326,11 +330,11 @@ s32 flLockTexture(Rect* lprect, u32 th, plContext* lpcontext, u32 flag) {
 }
 
 s32 flLockPalette(Rect* lprect, u32 th, plContext* lpcontext, u32 flag) {
-    FLTexture* lpflPalette = &flPalette[th - 1];
-
-    if (th > FL_PALETTE_MAX) {
+    if (th == 0 || th > FL_PALETTE_MAX) {
         return 0;
     }
+
+    FLTexture* lpflPalette = &flPalette[th - 1];
 
     if (!lpflPalette->be_flag) {
         return 0;
@@ -758,11 +762,11 @@ s32 flPS2LockTexture(Rect* /* unused */, FLTexture* lpflTexture, plContext* lpco
 }
 
 s32 flUnlockTexture(u32 th) {
-    FLTexture* lpflTexture = &flTexture[th - 1];
-
-    if (th > FL_TEXTURE_MAX) {
+    if (th == 0 || th > FL_TEXTURE_MAX) {
         return 0;
     }
+
+    FLTexture* lpflTexture = &flTexture[th - 1];
 
     if (!lpflTexture->be_flag) {
         return 0;
@@ -774,11 +778,11 @@ s32 flUnlockTexture(u32 th) {
 }
 
 s32 flUnlockPalette(u32 th) {
-    FLTexture* lpflPalette = &flPalette[th - 1];
-
-    if (th > FL_PALETTE_MAX) {
+    if (th == 0 || th > FL_PALETTE_MAX) {
         return 0;
     }
+
+    FLTexture* lpflPalette = &flPalette[th - 1];
 
     if (!lpflPalette->be_flag) {
         return 0;

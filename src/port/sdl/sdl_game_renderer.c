@@ -133,6 +133,7 @@ static void destroy_textures() {
 }
 
 static void push_render_task(RenderTask* task) {
+    if (render_task_count >= RENDER_TASK_MAX) return;
     if (No_Trans) {
         printf("⚠️ Requesting a render task when no rendering is allowed is a programmer error!\n");
     }
@@ -254,6 +255,14 @@ void SDLGameRenderer_RenderFrame() {
 
     for (int i = 0; i < render_task_count; i++) {
         const RenderTask* task = &render_tasks[i];
+        if (!task->texture) continue;
+
+        /* Validate vertex positions aren't insane */
+        float x0 = task->vertices[0].position.x;
+        float y0 = task->vertices[0].position.y;
+        if (x0 != x0 || y0 != y0) continue; /* NaN check */
+        if (x0 < -4096 || x0 > 4096 || y0 < -4096 || y0 > 4096) continue;
+
         const int indices[] = { 0, 1, 2, 1, 2, 3 };
         SDL_RenderGeometry(_renderer, task->texture, task->vertices, 4, indices, 6);
     }
@@ -305,6 +314,7 @@ void SDLGameRenderer_UnlockTexture(unsigned int th) {
 
 void SDLGameRenderer_CreateTexture(unsigned int th) {
     const int texture_index = LO_16_BITS(th) - 1;
+    if (texture_index < 0 || texture_index >= FL_TEXTURE_MAX) return;
     const FLTexture* fl_texture = &flTexture[texture_index];
     const void* pixels = flPS2GetSystemBuffAdrs(fl_texture->mem_handle);
     Uint32 pixel_format = SDL_PIXELFORMAT_UNKNOWN;
@@ -342,6 +352,7 @@ void SDLGameRenderer_CreateTexture(unsigned int th) {
 
 void SDLGameRenderer_DestroyTexture(unsigned int texture_handle) {
     const int texture_index = texture_handle - 1;
+    if (texture_index < 0 || texture_index >= FL_TEXTURE_MAX) return;
 
     for (int i = 0; i < FL_PALETTE_MAX + 1; i++) {
         SDL_Texture** texture_p = &texture_cache[texture_index][i];

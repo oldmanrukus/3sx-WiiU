@@ -315,7 +315,7 @@ u32 flCreateTextureFromApx_mem(void* mem, u32 flag) {
 
     th = 0;
     ph = 0;
-    th = flPS2GetTextureHandle();
+    th = flPS2GetTextureHandle(); if (th == 0) return 0;
     lpflTexture = &flTexture[LO_16_BITS(th) - 1];
     mip_num = plAPXGetMipmapTextureNum(mem) - 1;
 
@@ -371,7 +371,7 @@ u32 flCreateTextureFromApx_mem(void* mem, u32 flag) {
     flPS2CreateTextureHandle(th, flag);
 
     if ((lpflTexture->format == 0x14) || (lpflTexture->format == 0x13)) {
-        ph = flPS2GetPaletteHandle();
+        ph = flPS2GetPaletteHandle(); if (ph == 0) return 0;
         lpflPalette = &flPalette[HI_16_BITS(ph) - 1];
         plAPXSetPaletteContextFromImage(&pal_context, mem);
         flPS2GetPaletteInfoFromContext(&pal_context, ph, flag);
@@ -424,7 +424,7 @@ u32 flCreateTextureFromTim2_mem(void* mem, u32 flag) {
     s32 dh;
     s32 tex_size;
 
-    th = flPS2GetTextureHandle();
+    th = flPS2GetTextureHandle(); if (th == 0) return 0;
     lpflTexture = &flTexture[LO_16_BITS(th) - 1];
     mip_num = plTIM2GetMipmapTextureNum(mem);
 
@@ -482,7 +482,7 @@ u32 flCreateTextureFromTim2_mem(void* mem, u32 flag) {
     flPS2CreateTextureHandle(th, flag);
 
     if ((lpflTexture->format == SCE_GS_PSMT4) || (lpflTexture->format == SCE_GS_PSMT8)) {
-        ph = flPS2GetPaletteHandle();
+        ph = flPS2GetPaletteHandle(); if (ph == 0) return 0;
         lpflPalette = &flPalette[HI_16_BITS(ph) - 1];
         plTIM2SetPaletteContextFromImage(&pal_context, mem);
         flPS2GetPaletteInfoFromContext(&pal_context, ph, flag);
@@ -551,7 +551,7 @@ u32 flCreateTextureFromBMP_mem(void* mem, u32 flag) {
     u8 g;
     u8 b;
 
-    th = flPS2GetTextureHandle();
+    th = flPS2GetTextureHandle(); if (th == 0) return 0;
     lpflTexture = &flTexture[LO_16_BITS(th) - 1];
     plBMPSetContextFromImage(&context, mem);
 
@@ -609,7 +609,7 @@ u32 flCreateTextureFromPIC_mem(void* mem, u32 flag) {
     u32 th = 0;
     FLTexture* lpflTexture;
 
-    th = flPS2GetTextureHandle();
+    th = flPS2GetTextureHandle(); if (th == 0) return 0;
     lpflTexture = &flTexture[LO_16_BITS(th) - 1];
     plPICSetContextFromImage(&context, mem);
 

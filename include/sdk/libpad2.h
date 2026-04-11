@@ -72,6 +72,16 @@ typedef struct {
     union {
         unsigned char byte;
         struct {
+#if defined(TARGET_WIIU)
+            unsigned char left : 1;
+            unsigned char down : 1;
+            unsigned char right : 1;
+            unsigned char up : 1;
+            unsigned char start : 1;
+            unsigned char r3 : 1;
+            unsigned char l3 : 1;
+            unsigned char select : 1;
+#else
             unsigned char select : 1;
             unsigned char l3 : 1;
             unsigned char r3 : 1;
@@ -80,12 +90,23 @@ typedef struct {
             unsigned char right : 1;
             unsigned char down : 1;
             unsigned char left : 1;
+#endif
         } bits;
     } sw0;
 
     union {
         unsigned char byte;
         struct {
+#if defined(TARGET_WIIU)
+            unsigned char square : 1;
+            unsigned char cross : 1;
+            unsigned char circle : 1;
+            unsigned char triangle : 1;
+            unsigned char r1 : 1;
+            unsigned char l1 : 1;
+            unsigned char r2 : 1;
+            unsigned char l2 : 1;
+#else
             unsigned char l2 : 1;
             unsigned char r2 : 1;
             unsigned char l1 : 1;
@@ -94,6 +115,7 @@ typedef struct {
             unsigned char circle : 1;
             unsigned char cross : 1;
             unsigned char square : 1;
+#endif
         } bits;
     } sw1;
 

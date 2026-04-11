@@ -18,6 +18,7 @@
 #include "sf33rd/Source/Game/rendering/meta_col.h"
 #include "sf33rd/Source/Game/sound/sound3rd.h"
 #include "sf33rd/Source/Game/system/ramcnt.h"
+#include <string.h>
 
 typedef struct {
     u16 col[2][28][64];
@@ -425,6 +426,11 @@ void init_color_trans_req() {
 }
 
 void push_color_trans_req(s16 from_col, s16 to_col) {
+    if (from_col < 0 || from_col >= 512 || to_col < 0 || to_col >= 16) {
+        static int pctr_err = 0;
+        if (pctr_err < 5) { OSReport("[3SX] push_color_trans_req: bad from=%d to=%d, skip\n", from_col, to_col); pctr_err++; }
+        return;
+    }
     palCopyGhostDC(to_col << 6, 64, ColorRAM[from_col]);
     palUpdateGhostDC();
 }
@@ -556,8 +562,10 @@ void palUpdateGhostDC() {
 
     for (i = 0; i < col3rd_w.palDC.total; i++) {
         if (col3rd_w.upBits & (1 << i)) {
+            memset(&bits, 0, sizeof(bits));
             flLockPalette(NULL, col3rd_w.palDC.handle[i], &bits, 2);
             dstAdrs = bits.ptr;
+            if (!dstAdrs) continue;
             srcAdrs = &colPalBuffDC[i << 6];
             palConvRowTim2CI8Clut(srcAdrs, dstAdrs, 0x40);
             flUnlockPalette(col3rd_w.palDC.handle[i]);
@@ -574,8 +582,10 @@ void palUpdateGhostCP3(s32 pal, s32 nums) {
     u16* dstAdrs;
 
     for (i = pal; i < (pal + nums); i++) {
+        memset(&bits, 0, sizeof(bits));
         flLockPalette(NULL, col3rd_w.palCP3.handle[i], &bits, 2);
         dstAdrs = bits.ptr;
+        if (!dstAdrs) continue;
         srcAdrs = (u16*)&ColorRAM[i];
         palConvRowTim2CI8Clut(srcAdrs, dstAdrs, 0x40);
         flUnlockPalette(col3rd_w.palCP3.handle[i]);

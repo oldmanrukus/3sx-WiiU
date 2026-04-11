@@ -114,8 +114,14 @@ bool WiiUApp_PollEvents(void) {
         return false;
     }
 
-    /* SDL_PollEvent removed - SDL2-wiiu consumes VPAD events.
-     * WHBProcIsRunning handles HOME button. */
+    /* Pump SDL events — SDL2-wiiu needs this for internal VPAD processing */
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT) {
+            app_running = false;
+            return false;
+        }
+    }
 
     return true;
 }
