@@ -173,17 +173,27 @@ void* flAllocMemoryS(s32 size) {
 }
 
 u32 flPS2GetSystemMemoryHandle(s32 len, s32 type) {
+    /* Sanity check: PS2 textures should never exceed 1MB */
+    if (len <= 0 || len > 0x100000) {
+        static int sz_err = 0;
+        if (sz_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: bad size %d (0x%X), skip\n", len, len); sz_err++; }
+        return 0;
+    }
+
+    /* Check available free space before attempting allocation */
+    size_t free_space = mflGetFreeSpace();
+    if ((size_t)len > free_space) {
+        static int fs_err = 0;
+        if (fs_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: not enough space (need %d, have %zu), skip\n", len, free_space); fs_err++; }
+        return 0;
+    }
+
     u32 handle = mflRegisterS(len);
 
     if (handle == 0) {
-        flCompact();
-        handle = mflRegister(len);
-
-        if (handle == 0) {
-            static int mh_err = 0;
-            if (mh_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: alloc failed len=%u\n", len); mh_err++; }
-            return 0;
-        }
+        static int mh_err = 0;
+        if (mh_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: alloc failed len=%d, skip compact\n", len); mh_err++; }
+        return 0;
     }
 
     return handle;

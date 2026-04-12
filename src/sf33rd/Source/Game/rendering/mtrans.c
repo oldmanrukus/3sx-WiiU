@@ -1610,8 +1610,10 @@ void seqsAfterProcess() {
     s32 i;
     u32 keep = 0;
     u32 val = 0;
+    extern int loop_frame;
 
     if ((Debug_w[0x27] != 3) && (seqs_w.sprTotal != 0)) {
+        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: sprTotal=%d f=%d\n", seqs_w.sprTotal, loop_frame);
         for (i = 0; i < 24; i++) {
             if (seqs_w.up[i]) {
                 if (Debug_w[0x22]) {
@@ -1623,6 +1625,8 @@ void seqsAfterProcess() {
                 }
             }
         }
+
+        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: renew done f=%d\n", loop_frame);
 
         if (seqs_w.sprMax < seqs_w.sprTotal) {
             seqs_w.sprMax = seqs_w.sprTotal;
@@ -1640,6 +1644,7 @@ void seqsAfterProcess() {
                 Renderer_DrawSprite2(&seqs_w.chip[i]);
             }
         }
+        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: draw done f=%d\n", loop_frame);
     }
 }
 

@@ -94,6 +94,7 @@ u32 plmemRegisterS(MEM_MGR* memmgr, s32 len) {
 
     if (memmgr->direction != 0) {
         while (now_block->next != MEM_NULL_HANDLE) {
+			if (now_block->next >= (u32)memmgr->cnt) { memmgr->block[han].len = 0; return 0; }
             next_block = &memmgr->block[now_block->next];
             data_ptr = (u8*)ALIGN(now_block->ptr, now_block->len, memmgr->memalign);
             len2 = next_block->ptr - data_ptr;
@@ -126,6 +127,7 @@ u32 plmemRegisterS(MEM_MGR* memmgr, s32 len) {
     } else {
         while (now_block->next != MEM_NULL_HANDLE) {
             next_block = memmgr->block + now_block->next;
+			if (!now_block->ptr || !next_block->ptr) { memmgr->block[han].len = 0; return 0; }
             data_ptr = (u8*)ALIGN(next_block->ptr, next_block->len, memmgr->memalign);
             len2 = now_block->ptr - data_ptr;
 

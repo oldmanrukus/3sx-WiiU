@@ -5,6 +5,9 @@
 
 #include "sf33rd/Source/Game/rendering/texcash.h"
 #include "common.h"
+#if defined(TARGET_WIIU)
+#include <coreinit/debug.h>
+#endif
 #include "sf33rd/AcrSDK/ps2/flps2debug.h"
 #include "sf33rd/Source/Common/PPGFile.h"
 #include "sf33rd/Source/Game/debug/Debug.h"
@@ -249,11 +252,16 @@ void texture_cash_update() {
                         if ((tpu_free->x16 != mts[num].cpat->adr[i]->x16) ||
                             (tpu_free->x32 != mts[num].cpat->adr[i]->x32)) {
                             Debug_w[11] = 1;
+#if defined(TARGET_WIIU)
+                            OSReport("[3SX] WARN texcash: MAPPING MISS num=%d i=%d, skipping\n", num, i);
+                            return;
+#else
                             do {
                                 disp_texcash_free_area();
                                 flPrintL(2, 3, "MAPPING MISS : %2d : &2d", num, i);
                                 njWaitVSync_with_N();
                             } while (1);
+#endif
                         }
 
                         update_with_tpu_free(mts[num].mltcsh16, mts[num].mltcsh32);
@@ -278,11 +286,16 @@ void update_with_tpu_free(PatternState* mc16, PatternState* mc32) {
         mc16[tpu_free->x16_used[i]].time -= 1;
         if (mc16[tpu_free->x16_used[i]].time < 0) {
             Debug_w[11] = 1;
+#if defined(TARGET_WIIU)
+            OSReport("[3SX] WARN texcash: CACHE MISS x16 idx=%d, skipping\n", tpu_free->x16_used[i]);
+            return;
+#else
             do {
                 disp_texcash_free_area();
                 flPrintL(2, 3, "CACHE MISS x16 : %3d", tpu_free->x16_used[i]);
                 njWaitVSync_with_N();
             } while (1);
+#endif
         }
 
         if (mc16[tpu_free->x16_used[i]].time <= 0) {
@@ -294,11 +307,16 @@ void update_with_tpu_free(PatternState* mc16, PatternState* mc32) {
         mc32[tpu_free->x32_used[i]].time -= 1;
         if (mc32[tpu_free->x32_used[i]].time < 0) {
             Debug_w[11] = 1;
+#if defined(TARGET_WIIU)
+            OSReport("[3SX] WARN texcash: CACHE MISS x32 idx=%d, skipping\n", tpu_free->x32_used[i]);
+            return;
+#else
             do {
                 disp_texcash_free_area();
                 flPrintL(2, 3, "CACHE MISS x32 : %3d", tpu_free->x32_used[i]);
                 njWaitVSync_with_N();
             } while (1);
+#endif
         }
 
         if (mc32[tpu_free->x32_used[i]].time <= 0) {
@@ -331,11 +349,16 @@ void make_texcash_work(s16 ix) {
 
         Debug_w[10] = 2;
 
+#if defined(TARGET_WIIU)
+        OSReport("[3SX] WARN texcash: KEY ERROR (search), skipping\n");
+        return;
+#else
         while (1) {
             disp_ramcnt_free_area();
             flPrintL(5, 30, "TEXCASH KEY ERROR");
             njWaitVSync_with_N();
         }
+#endif
     } else {
         if (ix == 7) {
             page16 = mts_OB_page[bg_w.stage][0];
@@ -448,11 +471,16 @@ void purge_texcash_work(s16 ix) {
     } else {
         Debug_w[10] = 2;
 
+#if defined(TARGET_WIIU)
+        OSReport("[3SX] WARN texcash: KEY ERROR (purge), skipping\n");
+        return;
+#else
         while (1) {
             disp_ramcnt_free_area();
             flPrintL(5, 30, "TEXCASH KEY ERROR");
             njWaitVSync_with_N();
         }
+#endif
     }
 
     ppgReleaseTextureHandle(&mts[ix].tex, -1);

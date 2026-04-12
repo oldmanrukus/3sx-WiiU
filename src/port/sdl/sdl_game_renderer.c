@@ -107,9 +107,8 @@ static void push_texture(SDL_Texture* texture) {
 
 static SDL_Texture* get_texture() {
     if (texture_count == 0) {
-        OSReport("[3SX] WARN: No textures to get\n"); return NULL;
+        return NULL;   // remove the OSReport line, just return NULL
     }
-
     return textures[texture_count - 1];
 }
 
@@ -262,7 +261,7 @@ void SDLGameRenderer_RenderFrame() {
         float y0 = task->vertices[0].position.y;
         if (x0 != x0 || y0 != y0) continue; /* NaN check */
         if (x0 < -4096 || x0 > 4096 || y0 < -4096 || y0 > 4096) continue;
-
+        if (!task->texture) continue; 
         const int indices[] = { 0, 1, 2, 1, 2, 3 };
         SDL_RenderGeometry(_renderer, task->texture, task->vertices, 4, indices, 6);
     }

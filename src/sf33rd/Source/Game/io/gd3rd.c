@@ -6,6 +6,7 @@
 #include "sf33rd/Source/Game/io/gd3rd.h"
 #include <coreinit/debug.h>
 #include "common.h"
+extern int loop_frame;
 #include "port/utils.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/cse.h"
 #include "sf33rd/AcrSDK/ps2/flps2debug.h"
@@ -365,6 +366,12 @@ void Check_LDREQ_Queue() {
 
     if (!ldreq_break) {
         if (q_ldreq->be != 0) {
+            if (q_ldreq->type >= 6) {
+                OSReport("[3SX] LDREQ: bad type %d, skipping\n", q_ldreq->type);
+                q_ldreq->be = 0;
+                return;
+            }
+            { static int ldreq_dbg = 0; if (ldreq_dbg < 10 || loop_frame >= 1100) { OSReport("[3SX] LDREQ: type=%d be=%d id=%d rno=%d f=%d\n", q_ldreq->type, q_ldreq->be, q_ldreq->id, q_ldreq->rno, loop_frame); ldreq_dbg++; } }
             ldreq_process[q_ldreq->type](q_ldreq);
 
             if (q_ldreq->be == 0) {

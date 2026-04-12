@@ -206,10 +206,11 @@ void Game_Task_wiiu(struct _TASK* task_ptr) {
         }
 
         seqsAfterProcess();
-        if (loop_frame >= 1575) OSReport("[3SX] GT: pre texture_cash_update f=%d\n", loop_frame);
+        if (loop_frame >= 470) OSReport("[3SX] GT: pre texture_cash_update f=%d\n", loop_frame);
         texture_cash_update();
-        if (loop_frame >= 1575) OSReport("[3SX] GT: post texture_cash_update f=%d\n", loop_frame);
+        if (loop_frame >= 470) OSReport("[3SX] GT: post texture_cash_update f=%d\n", loop_frame);
         move_pulpul_work();
+        if (loop_frame >= 470) OSReport("[3SX] GT: post move_pulpul f=%d\n", loop_frame);
         Check_LDREQ_Queue();
     }
 
@@ -566,7 +567,9 @@ static int loop() {
 
             SDLApp_BeginFrame();
             game_step_0();
+            { static int ef_dbg = 0; if (ef_dbg < 3 || loop_frame > 170) OSReport("[3SX] gs0: pre_EndFrame f=%d\n", loop_frame); ef_dbg++; }
             SDLApp_EndFrame();
+            { static int ef2_dbg = 0; if (ef2_dbg < 3 || loop_frame > 170) OSReport("[3SX] gs0: post_EndFrame f=%d\n", loop_frame); ef2_dbg++; }
             game_step_1();
             break;
         }

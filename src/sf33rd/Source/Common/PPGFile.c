@@ -2,6 +2,7 @@
 #include "common.h"
 #include "rendering/game_renderer.h"
 #include <coreinit/debug.h>
+#include <string.h>
 #include "sf33rd/AcrSDK/common/plcommon.h"
 #include "sf33rd/AcrSDK/ps2/flps2render.h"
 #include "sf33rd/AcrSDK/ps2/flps2vram.h"
@@ -982,8 +983,10 @@ s32 ppgRenewTexChunkSeqs(Texture* tch) {
     for (i = 0; i < tch->total; i++) {
         if (tch->handle[i].b16[1] & 0x2000) {
             tch->handle[i].b16[1] &= 0xDFFF;
+            memset(&bits, 0, sizeof(bits));
             flLockTexture(NULL, tch->handle[i].b16[0], &bits, 3);
             dstRam = bits.ptr;
+            if (!dstRam) continue;
             srcRam = (s32*)(tch->srcAdrs + tch->srcSize * i);
             SDL_memmove(dstRam, srcRam, tch->srcSize);
             flUnlockTexture(tch->handle[i].b16[0]);
