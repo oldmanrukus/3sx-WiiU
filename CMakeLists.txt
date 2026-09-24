@@ -176,3 +176,11 @@ target_link_libraries(3sx-wiiu PRIVATE
 )
 
 wiiu_create_rpx(3sx-wiiu)
+
+# Optional: only runs when wuhbtool is installed.
+wiiu_create_wuhb(3sx-wiiu
+    NAME "Street Fighter III 3rd Strike"
+    SHORT_NAME "3SX"
+    AUTHOR "3SX contributors"
+    ICON "${PROJECT_SOURCE_DIR}/platform/wiiu/icon.png"
+)

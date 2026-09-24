@@ -71,11 +71,52 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 # WUT utilities for RPX/WUHB generation
 set(WUT_ELF2RPX ${WUT_ROOT}/bin/elf2rpl)
 
-# Helper function: convert ELF → RPX and optionally package as WUHB
+find_program(WUT_WUHBTOOL wuhbtool HINTS ${WUT_ROOT}/bin ${DEVKITPRO}/tools/bin)
+
+# Helper function: convert ELF -> RPX
 function(wiiu_create_rpx target)
     add_custom_command(TARGET ${target} POST_BUILD
         COMMAND ${WUT_ELF2RPX} $<TARGET_FILE:${target}>
                 $<TARGET_FILE_DIR:${target}>/${target}.rpx
-        COMMENT "Converting ${target} ELF → RPX"
+        COMMENT "Converting ${target} ELF -> RPX"
+    )
+endfunction()
+
+# Helper function: package the RPX as a .wuhb bundle for Aroma / the Homebrew
+# Launcher. Skipped when wuhbtool is not installed, so it can never fail a
+# build that only wants the RPX. Game data still lives on the SD card at
+# sd:/wiiu/apps/3sx/ -- the bundle carries only the executable and metadata.
+function(wiiu_create_wuhb target)
+    if(NOT WUT_WUHBTOOL)
+        message(STATUS "wuhbtool not found; skipping .wuhb packaging for ${target}")
+        return()
+    endif()
+
+    cmake_parse_arguments(ARG "" "NAME;SHORT_NAME;AUTHOR;ICON" "" ${ARGN})
+
+    set(wuhb_args "")
+
+    if(ARG_NAME)
+        list(APPEND wuhb_args --name=${ARG_NAME})
+    endif()
+
+    if(ARG_SHORT_NAME)
+        list(APPEND wuhb_args --short-name=${ARG_SHORT_NAME})
+    endif()
+
+    if(ARG_AUTHOR)
+        list(APPEND wuhb_args --author=${ARG_AUTHOR})
+    endif()
+
+    if(ARG_ICON AND EXISTS ${ARG_ICON})
+        list(APPEND wuhb_args --icon=${ARG_ICON})
+    endif()
+
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${WUT_WUHBTOOL}
+                $<TARGET_FILE_DIR:${target}>/${target}.rpx
+                $<TARGET_FILE_DIR:${target}>/${target}.wuhb
+                ${wuhb_args}
+        COMMENT "Packaging ${target}.rpx -> ${target}.wuhb"
     )
 endfunction()

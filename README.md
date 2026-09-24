@@ -6,6 +6,8 @@ Requires an official copy of *Street Fighter III: 3rd Strike* or *Street Fighter
 
 Based on a [decompilation](https://github.com/crowded-street/sfiii-decomp) of the PlayStation 2 port.
 
+This fork adds a **Wii U** port. See [how to build for Wii U](docs/building-wiiu.md).
+
 ## Resources
 
 Find instructions on [how to build](docs/building.md) the project and other useful resources in the [docs](docs) folder.

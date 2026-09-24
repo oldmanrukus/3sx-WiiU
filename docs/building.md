@@ -1,5 +1,10 @@
 # Build guide
 
+> **Note:** in this fork the root `CMakeLists.txt` is the Wii U build, so the
+> commands below do not work as written. See
+> [building-wiiu.md](building-wiiu.md) for the Wii U build; a desktop build
+> needs upstream's `CMakeLists.txt` restored.
+
 ## Setup
 
 ### Windows
