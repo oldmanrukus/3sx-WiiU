@@ -29,6 +29,10 @@
 #define AFS_MAGIC_BE 0x41465300  /* "AFS\0" read as big-endian on Wii U */
 #define AFS_MAX_READ_REQUESTS 100
 #define AFS_MAX_NAME_LENGTH 32
+#define AFS_SECTOR_SIZE 2048
+/* SF33RD.AFS holds a few thousand entries; anything near this is a corrupt
+   header, and entry_count is multiplied by 8 and 48 below. */
+#define AFS_MAX_ENTRIES 65535
 
 /* ======================================
  * Types
@@ -55,6 +59,7 @@ typedef struct ReadRequest {
     void* pending_buf;
     int pending_sectors;
     unsigned int pending_offset;
+    unsigned int pending_size;
 } ReadRequest;
 
 /* ======================================
@@ -106,6 +111,12 @@ static bool init_afs(const char* file_path) {
     /* Entry count is little-endian */
     uint32_t entry_count = read_le32(&header[4]);
     OSReport("[3SX] AFS: %u entries\n", entry_count);
+
+    if (entry_count == 0 || entry_count > AFS_MAX_ENTRIES) {
+        OSReport("[3SX] AFS: Implausible entry count %u\n", entry_count);
+        close(fd);
+        return false;
+    }
 
     afs.entries = (AFSEntry*)calloc(entry_count, sizeof(AFSEntry));
     if (!afs.entries) {
@@ -192,6 +203,27 @@ unsigned int AFS_GetSize(int file_num) {
  * Read operations — POSIX lseek + read
  * ====================================== */
 
+static const AFSEntry* entry_of(int file_num) {
+    if (file_num < 0 || file_num >= (int)afs.entry_count) {
+        return NULL;
+    }
+
+    return &afs.entries[file_num];
+}
+
+/* How much of this entry is left from the sector the request is sitting on.
+   Clamping against the entry's total size instead would read past its end and
+   into the next file once a read is split across calls. */
+static unsigned int bytes_available(const AFSEntry* entry, int sector) {
+    const unsigned int start = (unsigned int)sector * AFS_SECTOR_SIZE;
+
+    if (sector < 0 || start >= entry->size) {
+        return 0;
+    }
+
+    return entry->size - start;
+}
+
 void AFS_RunServer(void) {
     if (afs.fd < 0) return;
 
@@ -200,13 +232,13 @@ void AFS_RunServer(void) {
         if (!req->initialized || req->state != AFS_READ_STATE_READING)
             continue;
 
-        /* Clamp read size to actual file entry size */
-        unsigned int file_size = afs.entries[req->file_num].size;
-        unsigned int read_size = req->pending_sectors * 2048;
-        if (read_size > file_size) read_size = file_size;
+        if (req->pending_size == 0) {
+            req->state = AFS_READ_STATE_FINISHED;
+            continue;
+        }
 
         lseek(afs.fd, req->pending_offset, SEEK_SET);
-        ssize_t got = read(afs.fd, req->pending_buf, read_size);
+        ssize_t got = read(afs.fd, req->pending_buf, req->pending_size);
 
         if (got > 0) {
             req->state = AFS_READ_STATE_FINISHED;
@@ -219,6 +251,11 @@ void AFS_RunServer(void) {
 }
 
 AFSHandle AFS_Open(int file_num) {
+    if (entry_of(file_num) == NULL) {
+        OSReport("[3SX] AFS: Open of out-of-range file %d (have %u)\n", file_num, afs.entry_count);
+        return AFS_NONE;
+    }
+
     for (int i = 0; i < AFS_MAX_READ_REQUESTS; i++) {
         ReadRequest* req = &requests[i];
         if (req->initialized) continue;
@@ -239,10 +276,20 @@ void AFS_Read(AFSHandle handle, int sectors, void* buf) {
     if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return;
 
     ReadRequest* req = &requests[handle];
+    const AFSEntry* entry = entry_of(req->file_num);
+
+    if (entry == NULL || sectors <= 0) {
+        req->state = AFS_READ_STATE_ERROR;
+        return;
+    }
+
+    unsigned int want = (unsigned int)sectors * AFS_SECTOR_SIZE;
+    unsigned int have = bytes_available(entry, req->sector);
+
     req->pending_buf = buf;
     req->pending_sectors = sectors;
-    req->pending_offset = afs.entries[req->file_num].offset +
-                          req->sector * 2048;
+    req->pending_offset = entry->offset + (unsigned int)req->sector * AFS_SECTOR_SIZE;
+    req->pending_size = (want < have) ? want : have;
     req->state = AFS_READ_STATE_READING;
     req->sector += sectors;
 }
@@ -252,20 +299,28 @@ void AFS_ReadSync(AFSHandle handle, int sectors, void* buf) {
     if (afs.fd < 0) return;
 
     ReadRequest* req = &requests[handle];
+    const AFSEntry* entry = entry_of(req->file_num);
 
-    /* Calculate offset */
-    unsigned int offset = afs.entries[req->file_num].offset +
-                          req->sector * 2048;
+    if (entry == NULL || sectors <= 0) {
+        req->state = AFS_READ_STATE_ERROR;
+        return;
+    }
 
-    /* Clamp to actual file size */
-    unsigned int file_size = afs.entries[req->file_num].size;
-    unsigned int read_size = sectors * 2048;
-    if (read_size > file_size) read_size = file_size;
+    unsigned int offset = entry->offset + (unsigned int)req->sector * AFS_SECTOR_SIZE;
+    unsigned int want = (unsigned int)sectors * AFS_SECTOR_SIZE;
+    unsigned int have = bytes_available(entry, req->sector);
+    unsigned int read_size = (want < have) ? want : have;
+
+    req->sector += sectors;
+
+    if (read_size == 0) {
+        req->state = AFS_READ_STATE_FINISHED;
+        return;
+    }
 
     lseek(afs.fd, offset, SEEK_SET);
     ssize_t got = read(afs.fd, buf, read_size);
 
-    req->sector += sectors;
     req->state = (got > 0) ? AFS_READ_STATE_FINISHED :
                               AFS_READ_STATE_ERROR;
 }
@@ -287,7 +342,10 @@ AFSReadState AFS_GetState(AFSHandle handle) {
 
 unsigned int AFS_GetSectorCount(AFSHandle handle) {
     if (handle < 0 || handle >= AFS_MAX_READ_REQUESTS) return 0;
-    ReadRequest* req = &requests[handle];
-    unsigned int size = afs.entries[req->file_num].size;
-    return (size + 2048 - 1) / 2048;
+
+    const AFSEntry* entry = entry_of(requests[handle].file_num);
+
+    if (entry == NULL) return 0;
+
+    return (entry->size + AFS_SECTOR_SIZE - 1) / AFS_SECTOR_SIZE;
 }

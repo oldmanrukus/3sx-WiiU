@@ -275,9 +275,33 @@ static int play_loop_to_ring(ADXTrack* t, int max) {
 /* --- File loading --- */
 
 static void* load_afs_file(int id, int* sz) {
-    unsigned int fsz = fsGetFileSize(id); *sz = fsz;
-    size_t bsz = (fsz+2047)&~2047; void* b = malloc(bsz);
-    AFSHandle h = AFS_Open(id); AFS_ReadSync(h, fsCalSectorSize(fsz), b); AFS_Close(h);
+    unsigned int fsz = fsGetFileSize(id);
+    *sz = 0;
+
+    if (fsz == 0) {
+        OSReport("[3SX] WARN ADX: AFS file %d is empty or missing\n", id);
+        return NULL;
+    }
+
+    size_t bsz = (fsz+2047)&~2047;
+    void* b = malloc(bsz);
+
+    if (!b) {
+        OSReport("[3SX] WARN ADX: no memory for AFS file %d (%zu bytes)\n", id, bsz);
+        return NULL;
+    }
+
+    AFSHandle h = AFS_Open(id);
+
+    if (h == AFS_NONE) {
+        OSReport("[3SX] WARN ADX: cannot open AFS file %d\n", id);
+        free(b);
+        return NULL;
+    }
+
+    AFS_ReadSync(h, fsCalSectorSize(fsz), b);
+    AFS_Close(h);
+    *sz = fsz;
     return b;
 }
 
@@ -287,7 +311,15 @@ static void track_init(ADXTrack* t, int fid, void* buf, size_t bsz, bool loop) {
     memset(t, 0, sizeof(*t));
     if (fid != -1) { t->data = load_afs_file(fid, &t->size); t->should_free = true; }
     else { t->data = buf; t->size = bsz; t->should_free = false; }
-    if (!parse_adx_header(t->data, t->size, &t->decoder, &t->loop)) { OSReport("[3SX] ADX: bad header\n"); return; }
+    if (!t->data) { t->size = 0; return; }
+    /* size 0 makes track_exhausted() true, so a track that cannot be decoded
+       gets dropped by ADX_ProcessTracks() instead of blocking the queue. */
+    if (!parse_adx_header(t->data, t->size, &t->decoder, &t->loop)) {
+        OSReport("[3SX] ADX: bad header\n");
+        t->size = 0;
+        t->loop.enabled = false;
+        return;
+    }
     if (!loop) t->loop.enabled = false;
     t->read_offset = t->decoder.header_size; t->decoded_samples = 0;
     decode_track_to_ring(t, t->decoder.sample_rate / 4);
