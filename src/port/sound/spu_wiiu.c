@@ -328,6 +328,12 @@ void SPU_Upload(u32 dst, void* src, u32 size) {
     { static int su_dbg = 0; if (su_dbg < 3) { OSReport("[3SX] SPU_Upload: dst=0x%X size=%u\n", dst, size); su_dbg++; } }
     SDL_LockMutex(soundLock);
 
+    if ((dst >> 1) + ((size + 1) >> 1) > sizeof(ram) / sizeof(ram[0])) {
+        OSReport("[3SX] WARN SPU_Upload: dst=0x%X size=%u exceeds sample RAM, dropped\n", dst, size);
+        SDL_UnlockMutex(soundLock);
+        return;
+    }
+
     /*
      * Sample RAM holds byte-oriented SPU ADPCM blocks, but the decoder reads it
      * as 16-bit words and pulls the block header, loop flags and sample nibbles
@@ -336,12 +342,6 @@ void SPU_Upload(u32 dst, void* src, u32 size) {
      * Store the stream pre-swapped so every one of those reads lands on the
      * byte the PS2 decoder would have seen.
      */
-    if ((dst >> 1) + ((size + 1) >> 1) > sizeof(ram) / sizeof(ram[0])) {
-        OSReport("[3SX] WARN SPU_Upload: dst=0x%X size=%u exceeds sample RAM, dropped\n", dst, size);
-        SDL_UnlockMutex(soundLock);
-        return;
-    }
-
     {
         const u8* in = src;
         u16* out = &ram[dst >> 1];

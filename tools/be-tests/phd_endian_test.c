@@ -1,12 +1,21 @@
 /* Runs the real emlPhdFixEndian() over the real PHD banks on a big-endian CPU
    and re-implements PlaySe()'s lookup path, printing what the sound driver
    would see. Compared against a little-endian reference parse. */
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include "common.h"
 #include "structs.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndEndian.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.h"
+
+/* wut's console logger, stubbed for the host build. */
+void OSReport(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+}
 
 extern s8 PHD_SE[5088];
 extern s8 SpuMap[80];

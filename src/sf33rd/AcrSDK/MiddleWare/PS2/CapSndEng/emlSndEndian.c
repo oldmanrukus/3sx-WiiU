@@ -23,6 +23,7 @@
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 
 #include "common.h"
+#include <coreinit/debug.h>
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.h"
 #include "structs.h"
 
@@ -66,10 +67,15 @@ static s32 already_converted(const void* phd) {
         }
     }
 
-    if (phd_converted_count < PHD_CONVERTED_MAX) {
-        phd_converted[phd_converted_count++] = phd;
+    if (phd_converted_count >= PHD_CONVERTED_MAX) {
+        /* Out of room to remember this one. Converting it anyway risks swapping
+           a block twice, which corrupts it, so skip instead. The game has 21
+           banks plus SpuMap, so this should not be reachable. */
+        OSReport("[3SX] WARN: sound endian table full, leaving %p unconverted\n", phd);
+        return 1;
     }
 
+    phd_converted[phd_converted_count++] = phd;
     return 0;
 }
 
