@@ -10,6 +10,7 @@
 #include "port/sound/spu.h"
 #include "port/io/afs.h"
 #include "port/utils.h"
+#include "port/wiiu/wiiu_trace.h"
 #include "sf33rd/Source/Game/io/gd3rd.h"
 
 #include <coreinit/debug.h>
@@ -171,11 +172,13 @@ static bool parse_adx_header(const uint8_t* data, int size, ADXDecoder* dec, ADX
         loop->loop_position = 0;
     }
     OSReport("[3SX] ADX: ch=%d rate=%d blk=%d ver=%d loop=%d hdr=%d\n", dec->channels, dec->sample_rate, dec->block_size, ver, loop->enabled, dec->header_size);
+#if defined(WIIU_TRACE)
     if (dec->header_size + 8 <= size) {
         const uint8_t* a = data + dec->header_size;
         OSReport("[3SX] ADX audio@%d: %02X %02X %02X %02X %02X %02X %02X %02X\n",
             dec->header_size, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
     }
+#endif
     return true;
 }
 
@@ -204,7 +207,9 @@ static int decode_adx_block(ADXDecoder* dec, const uint8_t* block, int ch, int16
 static int decode_track_to_ring(ADXTrack* t, int max) {
     ADXDecoder* d = &t->decoder; int out=0;
     int16_t bl[64], br[64];
+#if defined(WIIU_TRACE)
     static int dec_dbg = 0;
+#endif
     while (out < max && ring_free() >= 2) {
         if (t->read_offset + d->block_size*d->channels > t->size) break;
         if (t->loop.enabled && t->decoded_samples >= t->loop.end_sample) break;
@@ -213,6 +218,7 @@ static int decode_track_to_ring(ADXTrack* t, int max) {
             t->read_offset += d->block_size;
             decode_adx_block(d, t->data+t->read_offset, 1, br, n);
             t->read_offset += d->block_size;
+#if defined(WIIU_TRACE)
             if (dec_dbg < 3000 && n > 0) {
                 dec_dbg++;
                 if (dec_dbg <= 3) {
@@ -228,6 +234,7 @@ static int decode_track_to_ring(ADXTrack* t, int max) {
                     OSReport("[3SX] DEC: blk=%d max=%d scale=%d\n", dec_dbg, maxval, read_be16(t->data+t->read_offset-d->block_size*2));
                 }
             }
+#endif
             for (int i=0; i<n && out<max && ring_free()>=2; i++) {
                 int16_t l=(int16_t)(bl[i]*output_gain), r=(int16_t)(br[i]*output_gain);
                 ring_write_stereo(l, r); out++;
@@ -293,6 +300,13 @@ static void track_destroy(ADXTrack* t) {
 }
 
 static ADXTrack* alloc_track(void) {
+    if (num_tracks >= TRACKS_MAX) {
+        /* Wrapping here would hand back a slot that is still playing and leak
+           its buffers, so refuse instead. */
+        OSReport("[3SX] WARN ADX: track queue full (%d), request dropped\n", num_tracks);
+        return NULL;
+    }
+
     int i = (first_track_index + num_tracks) % TRACKS_MAX;
     num_tracks++; has_tracks = true; return &tracks[i];
 }
@@ -304,12 +318,7 @@ void ADX_ProcessTracks(void) {
 
     int used = ring_used();
 
-    {
-        static int pt_log = 0;
-        if ((pt_log++ % 60) == 0 && pt_log < 1200) {
-            OSReport("[3SX] PT: used=%d tracks=%d\n", used, num_tracks);
-        }
-    }
+    WIIU_TRACE_LOG("[3SX] PT: used=%d tracks=%d\n", used, num_tracks);
 
     if (used > REFILL_THRESHOLD) return;
     int first=first_track_index, count=num_tracks;
@@ -319,7 +328,7 @@ void ADX_ProcessTracks(void) {
         if (track_loop_filled(t)) { play_loop_to_ring(t, t->decoder.sample_rate/60); break; }
         if (!track_exhausted(t)) break;
         track_destroy(t); num_tracks--;
-        if (num_tracks>0) first_track_index++; else first_track_index=0;
+        if (num_tracks>0) first_track_index = (first_track_index+1)%TRACKS_MAX; else first_track_index=0;
     }
 }
 
@@ -351,15 +360,15 @@ void ADX_StartSeamless(void) { is_paused=false; if (audio_device) SDL_PauseAudio
 void ADX_ResetEntry(void) {}
 
 void ADX_StartMem(void* buf, size_t size) {
-    ADX_Stop(); ADXTrack* t = alloc_track(); track_init(t, -1, buf, size, true);
+    ADX_Stop(); ADXTrack* t = alloc_track(); if (!t) return; track_init(t, -1, buf, size, true);
     is_paused=false; if (audio_device) SDL_PauseAudioDevice(audio_device, 0);
 }
 
 int ADX_GetNumFiles(void) { return num_tracks; }
-void ADX_EntryAfs(int id) { ADXTrack* t = alloc_track(); track_init(t, id, NULL, 0, false); }
+void ADX_EntryAfs(int id) { ADXTrack* t = alloc_track(); if (!t) return; track_init(t, id, NULL, 0, false); }
 
 void ADX_StartAfs(int id) {
-    ADX_Stop(); ADXTrack* t = alloc_track(); track_init(t, id, NULL, 0, true);
+    ADX_Stop(); ADXTrack* t = alloc_track(); if (!t) return; track_init(t, id, NULL, 0, true);
     is_paused=false; if (audio_device) SDL_PauseAudioDevice(audio_device, 0);
     OSReport("[3SX] ADX_StartAfs: id=%d sz=%d rate=%d ring=%d\n", id, t->size, t->decoder.sample_rate, ring_used());
 }

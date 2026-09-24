@@ -31,8 +31,11 @@ static const int cps3_height = 224;
 static SDL_Renderer* _renderer = NULL;
 static SDL_Surface* surfaces[FL_TEXTURE_MAX] = { NULL };
 static SDL_Palette* palettes[FL_PALETTE_MAX] = { NULL };
-static SDL_Texture* textures[FL_PALETTE_MAX] = { NULL };
-static int texture_count = 0;
+/* Only the most recently set texture is ever read, and it is cleared at the end
+   of each frame. This used to be an FL_PALETTE_MAX array appended to on every
+   SDLGameRenderer_SetTexture() call with no bounds check, which a frame with
+   more than 1088 texture changes ran straight off the end of. */
+static SDL_Texture* current_texture = NULL;
 static SDL_Texture* texture_cache[FL_TEXTURE_MAX][FL_PALETTE_MAX + 1] = { { NULL } };
 static SDL_Texture** textures_to_destroy = NULL;
 static int textures_to_destroy_count = 0;
@@ -102,15 +105,11 @@ static void save_texture(const SDL_Surface* surface, const SDL_Palette* palette)
 // Textures
 
 static void push_texture(SDL_Texture* texture) {
-    textures[texture_count] = texture;
-    texture_count += 1;
+    current_texture = texture;
 }
 
 static SDL_Texture* get_texture() {
-    if (texture_count == 0) {
-        return NULL;   // remove the OSReport line, just return NULL
-    }
-    return textures[texture_count - 1];
+    return current_texture;
 }
 
 static void push_texture_to_destroy(SDL_Texture* texture) {
@@ -139,11 +138,7 @@ static void push_texture_to_destroy(SDL_Texture* texture) {
 }
 
 static void destroy_textures() {
-    for (int i = 0; i < texture_count; i++) {
-        textures[i] = NULL;
-    }
-
-    texture_count = 0;
+    current_texture = NULL;
 
     for (int i = 0; i < textures_to_destroy_count; i++) {
         SDL_DestroyTexture(textures_to_destroy[i]);
