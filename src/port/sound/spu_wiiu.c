@@ -16,7 +16,6 @@
 
 #include <SDL2/SDL.h>
 #include <coreinit/debug.h>
-#include <coreinit/mutex.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -79,9 +78,11 @@ struct SPU_Voice {
     u32 decRPos, decWPos, decLeft;
 };
 
-/* Mutex — uses OSMutex on Wii U */
-OSMutex spu_mutex;
-SDL_Mutex* soundLock = (SDL_Mutex*)&spu_mutex;
+/* The same lock emlShim.c takes around voice state. It has to be a real SDL
+   mutex: emlShim calls SDL_LockMutex() on it, which cannot work on an OSMutex
+   reinterpreted as an SDL_Mutex. SDL mutexes are reentrant, so the audio
+   callback can hold it across the EML timer callback that re-takes it. */
+SDL_Mutex* soundLock = NULL;
 
 static void (*timer_cb)(void);
 static struct SPU_Voice voices[VOICE_COUNT];
@@ -325,9 +326,31 @@ void SPU_VoiceStart(int vnum, u32 start_addr) {
 
 void SPU_Upload(u32 dst, void* src, u32 size) {
     { static int su_dbg = 0; if (su_dbg < 3) { OSReport("[3SX] SPU_Upload: dst=0x%X size=%u\n", dst, size); su_dbg++; } }
-    OSLockMutex(&spu_mutex);
-    memcpy(&ram[dst >> 1], src, size);
-    OSUnlockMutex(&spu_mutex);
+    SDL_LockMutex(soundLock);
+
+    /*
+     * Sample RAM holds byte-oriented SPU ADPCM blocks, but the decoder reads it
+     * as 16-bit words and pulls the block header, loop flags and sample nibbles
+     * out of those words assuming little-endian byte order (header & 0xf is the
+     * shift from byte 0, header & 0x100 the loop flag from byte 1, and so on).
+     * Store the stream pre-swapped so every one of those reads lands on the
+     * byte the PS2 decoder would have seen.
+     */
+    {
+        const u8* in = src;
+        u16* out = &ram[dst >> 1];
+        u32 i;
+
+        for (i = 0; i + 1 < size; i += 2) {
+            *out++ = (u16)(in[i] | ((u16)in[i + 1] << 8));
+        }
+
+        if (size & 1) {
+            *out = (u16)in[size - 1];
+        }
+    }
+
+    SDL_UnlockMutex(soundLock);
 }
 
 /* ======================================
@@ -344,7 +367,7 @@ extern void ADX_RegisterSPUCallback(void (*cb)(void));
 void SPU_Init(void (*cb)()) {
     timer_cb = cb ? cb : nullcb;
     memset(voices, 0, sizeof(voices));
-    OSInitMutex(&spu_mutex);
+    soundLock = SDL_CreateMutex();
 
     /* Register the EML timer callback with ADX's audio callback.
        SDL2-wiiu only supports one audio device, so SPU piggybacks

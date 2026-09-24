@@ -381,6 +381,12 @@ void make_texcash_work(s16 ix) {
             memreq = (mts[ix].mltnum16 * 8) + (mts[ix].mltnum32 * 8) + sizeof(PatternCollection) +
                      sizeof(TexturePoolFree) + sizeof(TexturePoolUsed);
             mts_ok[ix].key0 = Pull_ramcnt_key(memreq, mts_base[ix].type, 0, 0);
+
+            if (mts_ok[ix].key0 == 0) {
+                OSReport("[3SX] WARN texcash: no memory for cache %d (%zu bytes), skipping\n", ix, memreq);
+                return;
+            }
+
             adrs = (u8*)Get_ramcnt_address(mts_ok[ix].key0);
             mts[ix].mltcsh16 = (PatternState*)adrs;
             adrs += mts[ix].mltnum16 * 8;
@@ -398,6 +404,12 @@ void make_texcash_work(s16 ix) {
         } else {
             memreq = mts[ix].mltnum16 * 8 + mts[ix].mltnum32 * 8;
             mts_ok[ix].key0 = Pull_ramcnt_key(memreq, mts_base[ix].type, 0, 0);
+
+            if (mts_ok[ix].key0 == 0) {
+                OSReport("[3SX] WARN texcash: no memory for cache %d (%zu bytes), skipping\n", ix, memreq);
+                return;
+            }
+
             adrs = (u8*)Get_ramcnt_address(mts_ok[ix].key0);
             mts[ix].mltcsh16 = (PatternState*)adrs;
             adrs += mts[ix].mltnum16 * 8;
@@ -408,6 +420,14 @@ void make_texcash_work(s16 ix) {
         memreq = ((mts_base[ix].mode & 4) != 0) + 1;
         memreq *= (mts[ix].mltnum << 0x10);
         mts_ok[ix].key1 = Pull_ramcnt_key(memreq, mts_base[ix].type, 0, 0);
+
+        if (mts_ok[ix].key1 == 0) {
+            OSReport("[3SX] WARN texcash: no memory for pages %d (%zu bytes), skipping\n", ix, memreq);
+            Push_ramcnt_key_original(mts_ok[ix].key0);
+            mts_ok[ix].key0 = 0;
+            return;
+        }
+
         mts[ix].attribute = mts_base[ix].attribute;
         page16 = Get_ramcnt_address(mts_ok[ix].key1);
         mlt_obj_trans_init(&mts[ix], mts_base[ix].mode, (u8*)page16);

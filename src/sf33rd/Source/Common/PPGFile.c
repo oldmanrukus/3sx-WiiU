@@ -757,6 +757,11 @@ s32 ppgSetupTexChunkSeqs(Texture* tch, PPGFileHeader* ppg, u8* adrs, s32 ixNum1s
         return 0;
     }
 
+    if (adrs == NULL || ixNums <= 0) {
+        flLogOut("ppgSetupTexChunkSeqs: no destination buffer\n");
+        return 0;
+    }
+
     tch->be = 0;
     tch->textures = ixNums;
     tch->accnum = ixNums;

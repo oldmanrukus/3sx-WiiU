@@ -82,6 +82,13 @@ static void audio_callback(void* userdata, Uint8* stream, int len) {
     int16_t* out = (int16_t*)stream;
     int samples = len / sizeof(int16_t) / 2; /* stereo sample pairs */
 
+    /* SPU voice state is written from the game thread; take the same lock it
+       uses for the whole batch rather than racing it sample by sample. It is
+       reentrant, so spu_timer_cb() below may take it again. */
+    if (soundLock) {
+        SDL_LockMutex(soundLock);
+    }
+
     for (int i = 0; i < samples; i++) {
         /* ADX BGM from ring buffer */
         int32_t l = 0, r = 0;
@@ -113,6 +120,10 @@ static void audio_callback(void* userdata, Uint8* stream, int len) {
             if (spu_timer_cb) spu_timer_cb();
             spu_cb_timer = 192;
         }
+    }
+
+    if (soundLock) {
+        SDL_UnlockMutex(soundLock);
     }
 }
 
@@ -179,7 +190,8 @@ static int decode_adx_block(ADXDecoder* dec, const uint8_t* block, int ch, int16
             int v = j==0 ? (nib[i]>>4)&0xF : nib[i]&0xF;
             if (v&8) v -= 16;
             int32_t s = v * scale + ((c1*p1 + c2*p2) >> 12);
-            if (s>32767) s=32767; if (s<-32768) s=-32768;
+            if (s>32767) s=32767;
+            if (s<-32768) s=-32768;
             out[n++] = (int16_t)s; p2=p1; p1=s;
         }
     }

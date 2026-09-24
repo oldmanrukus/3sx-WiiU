@@ -26,6 +26,7 @@ void SDLGameRenderer_EndFrame();
 /* SDL backend implementations of CRS_Renderer_ interface */
 void SDLGameRenderer_CreateTexture(unsigned int th);
 void SDLGameRenderer_DestroyTexture(unsigned int texture_handle);
+void SDLGameRenderer_RelocateTextures(void);
 void SDLGameRenderer_UnlockTexture(unsigned int th);
 void SDLGameRenderer_CreatePalette(unsigned int ph);
 void SDLGameRenderer_DestroyPalette(unsigned int palette_handle);

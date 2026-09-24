@@ -175,6 +175,7 @@ s16 Pull_ramcnt_key(size_t memreq, u8 kokey, u8 group, u8 frre) {
         // There are not enough memory keys.\n
         flLogOut("メモリキーの個数が足りなくなりました。\n");
         ERR_STOP;
+        return 0;
     }
 
     key = rckeyque[(rckeyctr -= 1)];
@@ -202,6 +203,12 @@ s16 Pull_ramcnt_key(size_t memreq, u8 kokey, u8 group, u8 frre) {
         // Failed to allocate memory.\n
         flLogOut("メモリの確保に失敗しました。\n");
         ERR_STOP;
+        /* ERR_STOP halted the machine on PS2. Here it is a no-op, so the
+           failure has to be reported: the key has already been handed back to
+           the free queue, and returning it anyway would both alias a key that
+           is free again and give the caller adr == 0 to write through. */
+        rwk->size = 0;
+        return 0;
     }
 
     rwk->use = 1;

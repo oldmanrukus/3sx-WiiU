@@ -180,20 +180,26 @@ u32 flPS2GetSystemMemoryHandle(s32 len, s32 type) {
         return 0;
     }
 
-    /* Check available free space before attempting allocation */
-    size_t free_space = mflGetFreeSpace();
-    if ((size_t)len > free_space) {
-        static int fs_err = 0;
-        if (fs_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: not enough space (need %d, have %zu), skip\n", len, free_space); fs_err++; }
-        return 0;
-    }
-
     u32 handle = mflRegisterS(len);
 
     if (handle == 0) {
-        static int mh_err = 0;
-        if (mh_err < 5) { OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: alloc failed len=%d, skip compact\n", len); mh_err++; }
-        return 0;
+        /* The pool only reclaims space released below the bump pointer when it
+           is compacted, so a plain "is there room?" test is not enough: without
+           this retry the pool drains for good and every later texture load
+           fails. flCompact() notifies the renderer so the surfaces that point
+           into the pool are rebuilt at the blocks' new addresses. */
+        flCompact();
+        handle = mflRegister(len);
+
+        if (handle == 0) {
+            static int mh_err = 0;
+            if (mh_err < 5) {
+                OSReport("[3SX] WARN flPS2GetSystemMemoryHandle: alloc failed len=%d after compact (free=%zu)\n",
+                         len, mflGetFreeSpace());
+                mh_err++;
+            }
+            return 0;
+        }
     }
 
     return handle;

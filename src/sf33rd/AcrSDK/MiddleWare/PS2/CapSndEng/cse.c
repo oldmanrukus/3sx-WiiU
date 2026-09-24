@@ -2,6 +2,7 @@
 #include "common.h"
 #include "port/sound/spu.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlMemMap.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlPhdEndian.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlRpcQueue.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndDrv.h"
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlTSB.h"
@@ -83,6 +84,7 @@ u32 cseGetIdStoredBd(u32 bank) {
 }
 
 s32 cseMemMapSetPhdAddr(u32 bank, void* addr) {
+    emlPhdFixEndian(addr);
     return mlMemMapSetPhdAddr(bank, addr);
 }
 

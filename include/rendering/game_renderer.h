@@ -17,6 +17,9 @@ void Renderer_CreatePalette(unsigned int ph);
 void Renderer_DestroyPalette(unsigned int palette_handle);
 void Renderer_UnlockPalette(unsigned int th);
 void Renderer_SetTexture(unsigned int th);
+/* Called after the system memory pool has been compacted: every backend that
+   keeps a raw pointer into pool memory must re-read it from the mem handle. */
+void Renderer_RelocateTextures(void);
 void Renderer_DrawTexturedQuad(const Sprite* sprite, unsigned int color);
 void Renderer_DrawSprite(const Sprite* sprite, unsigned int color);
 void Renderer_DrawSprite2(const Sprite2* sprite2);

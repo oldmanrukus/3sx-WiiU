@@ -21,3 +21,6 @@ third_party
 states
 rom
 dump
+
+# big-endian check staging (tools/check-bigendian.sh)
+.be-check/

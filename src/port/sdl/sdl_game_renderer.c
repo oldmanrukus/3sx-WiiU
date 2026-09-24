@@ -34,8 +34,9 @@ static SDL_Palette* palettes[FL_PALETTE_MAX] = { NULL };
 static SDL_Texture* textures[FL_PALETTE_MAX] = { NULL };
 static int texture_count = 0;
 static SDL_Texture* texture_cache[FL_TEXTURE_MAX][FL_PALETTE_MAX + 1] = { { NULL } };
-static SDL_Texture* textures_to_destroy[1024] = { NULL };
+static SDL_Texture** textures_to_destroy = NULL;
 static int textures_to_destroy_count = 0;
+static int textures_to_destroy_capacity = 0;
 static RenderTask render_tasks[RENDER_TASK_MAX] = { 0 };
 static int render_task_count = 0;
 
@@ -113,6 +114,26 @@ static SDL_Texture* get_texture() {
 }
 
 static void push_texture_to_destroy(SDL_Texture* texture) {
+    if (texture == NULL) {
+        return;
+    }
+
+    if (textures_to_destroy_count >= textures_to_destroy_capacity) {
+        const int new_capacity = (textures_to_destroy_capacity == 0) ? 1024 : textures_to_destroy_capacity * 2;
+        SDL_Texture** grown = SDL_realloc(textures_to_destroy, (size_t)new_capacity * sizeof(*grown));
+
+        if (grown == NULL) {
+            /* Can't defer it; dropping the texture leaks less than overrunning
+               the list, but a texture still queued for this frame must not be
+               destroyed here, so leave it for the next flush attempt. */
+            OSReport("[3SX] WARN: texture destroy list full (%d), leaking texture\n", textures_to_destroy_count);
+            return;
+        }
+
+        textures_to_destroy = grown;
+        textures_to_destroy_capacity = new_capacity;
+    }
+
     textures_to_destroy[textures_to_destroy_count] = texture;
     textures_to_destroy_count += 1;
 }
@@ -296,7 +317,7 @@ void SDLGameRenderer_EndFrame() {
 void SDLGameRenderer_UnlockPalette(unsigned int ph) {
     const int palette_handle = ph;
 
-    if ((palette_handle > 0) && (palette_handle < FL_PALETTE_MAX)) {
+    if ((palette_handle > 0) && (palette_handle <= FL_PALETTE_MAX)) {
         SDLGameRenderer_DestroyPalette(palette_handle);
         SDLGameRenderer_CreatePalette(ph << 16);
     }
@@ -305,7 +326,7 @@ void SDLGameRenderer_UnlockPalette(unsigned int ph) {
 void SDLGameRenderer_UnlockTexture(unsigned int th) {
     const int texture_handle = th;
 
-    if ((texture_handle > 0) && (texture_handle < FL_TEXTURE_MAX)) {
+    if ((texture_handle > 0) && (texture_handle <= FL_TEXTURE_MAX)) {
         SDLGameRenderer_DestroyTexture(texture_handle);
         SDLGameRenderer_CreateTexture(th);
     }
@@ -366,6 +387,24 @@ void SDLGameRenderer_DestroyTexture(unsigned int texture_handle) {
 
     SDL_DestroySurface(surfaces[texture_index]);
     surfaces[texture_index] = NULL;
+}
+
+/*
+ * flPS2GetSystemBuffAdrs() hands back a raw pointer into the compactable system
+ * memory pool, and SDL_CreateSurfaceFrom() keeps that pointer for the lifetime
+ * of the surface. Compacting the pool moves every block, so each live surface
+ * has to be rebuilt from the block's new address or it reads freed/moved memory.
+ */
+void SDLGameRenderer_RelocateTextures(void) {
+    for (int i = 0; i < FL_TEXTURE_MAX; i++) {
+        if (surfaces[i] == NULL) {
+            continue;
+        }
+
+        const unsigned int th = (unsigned int)(i + 1);
+        SDLGameRenderer_DestroyTexture(th);
+        SDLGameRenderer_CreateTexture(th);
+    }
 }
 
 void SDLGameRenderer_CreatePalette(unsigned int ph) {

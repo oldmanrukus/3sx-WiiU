@@ -102,6 +102,16 @@ void Renderer_SetTexture(unsigned int th) {
 #endif
 }
 
+void Renderer_RelocateTextures(void) {
+#if defined(TARGET_PSP)
+    /* PSP backend copies texture data, nothing to relocate. */
+#elif defined(TARGET_3DS)
+    /* 3DS backend copies texture data, nothing to relocate. */
+#else
+    SDLGameRenderer_RelocateTextures();
+#endif
+}
+
 void Renderer_DrawTexturedQuad(const Sprite* sprite, unsigned int color) {
 #if defined(TARGET_PSP)
     PSPRenderer_DrawTexturedQuad(sprite, color);
