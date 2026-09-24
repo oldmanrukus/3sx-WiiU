@@ -1,5 +1,6 @@
 #include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.h"
 #include "common.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndEndian.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -20,6 +21,8 @@ s32 flSpuMapInit(PSPUMAP* pMap) {
     if (strncmp((char*)pMap, "SPUMAPDT", 8) != 0) {
         return -1;
     }
+
+    emlSpuMapFixEndian(pMap);
 
     pSpuMap = pMap;
     CurrPage = 0;

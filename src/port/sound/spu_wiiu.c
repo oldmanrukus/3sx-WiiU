@@ -336,6 +336,12 @@ void SPU_Upload(u32 dst, void* src, u32 size) {
      * Store the stream pre-swapped so every one of those reads lands on the
      * byte the PS2 decoder would have seen.
      */
+    if ((dst >> 1) + ((size + 1) >> 1) > sizeof(ram) / sizeof(ram[0])) {
+        OSReport("[3SX] WARN SPU_Upload: dst=0x%X size=%u exceeds sample RAM, dropped\n", dst, size);
+        SDL_UnlockMutex(soundLock);
+        return;
+    }
+
     {
         const u8* in = src;
         u16* out = &ram[dst >> 1];

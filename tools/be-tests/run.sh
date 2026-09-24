@@ -17,10 +17,13 @@ trap 'rm -rf "$OUT"' EXIT
 
 powerpc-linux-gnu-gcc -std=gnu11 -O2 -Wall -static \
     -DSDL_DISABLE_IMMINTRIN_H -DTARGET_WIIU -D__WIIU__ \
+    -Wno-stringop-overflow -Wno-array-bounds \
     -I"$ROOT/src" -I"$ROOT/include" -I"$ROOT/include/sdk" -I"$STAGE" \
     -o "$OUT/phd_test" \
     "$ROOT/tools/be-tests/phd_endian_test.c" \
-    "$ROOT/src/sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlPhdEndian.c" \
+    "$ROOT/src/sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndEndian.c" \
+    "$ROOT/src/sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.c" \
+    "$ROOT/src/sf33rd/Source/PS2/cseDataFiles/SpuMap.c" \
     "$ROOT/src/sf33rd/Source/PS2/cseDataFiles/PHD_SE.c" \
     "$ROOT/src/sf33rd/Source/PS2/cseDataFiles/PHD_PL00.c"
 

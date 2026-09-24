@@ -1,6 +1,6 @@
 /**
- * @file emlPhdEndian.c
- * @brief Byte order fixup for PS2 sound bank (PHD) data.
+ * @file emlSndEndian.c
+ * @brief Byte order fixup for the verbatim PS2 sound data blobs.
  *
  * The PHD banks are verbatim PlayStation 2 data: the four-character chunk tags
  * read the same either way, but every numeric field in them is little-endian.
@@ -8,16 +8,22 @@
  * IsSafeProgChunk() fails, PlaySe() gets NumSplit < 0 and no voice is ever
  * keyed on — which is why sound effects are silent rather than distorted.
  *
- * The banks are static arrays that are registered (and re-registered) many
- * times over a session, so this converts each one in place exactly once and
- * records that it has done so.
+ * SpuMap has the same problem: its NumPages reads as 0x01000000, so
+ * flSpuMapChgPage() bailed out before filling in the per-bank addresses and
+ * every bank was left pointing at SpuTopAddr -- each sound bank uploaded on top
+ * of the last one.
+ *
+ * These are static arrays that are registered (and re-registered) many times
+ * over a session, so this converts each one in place exactly once and records
+ * that it has done so.
  */
 
-#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlPhdEndian.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndEndian.h"
 
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 
 #include "common.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.h"
 #include "structs.h"
 
 #define PHD_CONVERTED_MAX 32
@@ -36,9 +42,19 @@ static void swap_u16(u16* p) {
     *p = (u16)(((v & 0x00FFu) << 8) | ((v & 0xFF00u) >> 8));
 }
 
+/* Byte-wise so the tag can sit in a u32/u64 member without tripping the
+   compiler's object-size checks on strncmp(). */
 static s32 tag_is(const void* p, const char* tag) {
     const u8* b = p;
-    return b[0] == (u8)tag[0] && b[1] == (u8)tag[1] && b[2] == (u8)tag[2] && b[3] == (u8)tag[3];
+    s32 i;
+
+    for (i = 0; tag[i] != '\0'; i++) {
+        if (b[i] != (u8)tag[i]) {
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 static s32 already_converted(const void* phd) {
@@ -159,3 +175,25 @@ void emlPhdFixEndian(void* phd) {
 }
 
 #endif /* big endian */
+
+/*
+ * Head is a tag plus NumPages and a pad word; the per-page bank size tables
+ * follow it. Only the numeric fields need swapping.
+ */
+void emlSpuMapFixEndian(void* map) {
+    PSPUMAP* m = map;
+    u32 page;
+    u32 i;
+
+    if (m == NULL || !tag_is(m, "SPUMAPDT") || already_converted(m)) {
+        return;
+    }
+
+    swap_u32(&m->Head.NumPages);
+
+    for (page = 0; page < m->Head.NumPages; page++) {
+        for (i = 0; i < SPUBANK_MAX; i++) {
+            swap_u32(&m->Page[page].BankSize[i]);
+        }
+    }
+}

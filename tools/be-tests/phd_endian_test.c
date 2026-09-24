@@ -5,9 +5,11 @@
 #include <string.h>
 #include "common.h"
 #include "structs.h"
-#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlPhdEndian.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/emlSndEndian.h"
+#include "sf33rd/AcrSDK/MiddleWare/PS2/CapSndEng/eflSpuMap.h"
 
 extern s8 PHD_SE[5088];
+extern s8 SpuMap[80];
 extern s8 PHD_PL00[1024];
 
 /* verbatim from emlRefPhd.c */
@@ -57,5 +59,10 @@ int main(void) {
     printf("endianness: %s\n", (*(u16*)"\1\0" == 0x0100) ? "BIG" : "little");
     dump("PHD_SE",   PHD_SE,   3);
     dump("PHD_PL00", PHD_PL00, 1);
+
+    printf("SpuMap flSpuMapInit=%d\n", flSpuMapInit((PSPUMAP*)SpuMap));
+    for (int b = 0; b < 4; b++) {
+        printf("  BankAddr[%d]=%u BankSize[%d]=%u\n", b, flSpuMapGetBankAddr(b), b, CurrMap.BankSize[b]);
+    }
     return 0;
 }

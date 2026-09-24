@@ -1,7 +1,8 @@
 import re,struct
 def load(path):
+    # The generated arrays mix decimal and hex literals.
     s=open(path).read(); body=s[s.index('{')+1:s.rindex('}')]
-    return bytes((int(x)&0xFF) for x in re.findall(r'-?\d+',body))
+    return bytes((int(x,0)&0xFF) for x in re.findall(r'-?0[xX][0-9a-fA-F]+|-?\d+',body))
 def ref(path,name,nprog):
     d=load(path)
     cs,ver,hs,bs,po,so,vo=struct.unpack_from('<7I',d,4)
@@ -28,3 +29,15 @@ def ref(path,name,nprog):
     print(f"  vagi[{vi}]: vagOffset={vofs} vagSize={vsz} loop={lf} rate={rate}")
 ref('src/sf33rd/Source/PS2/cseDataFiles/PHD_SE.c','PHD_SE',3)
 ref('src/sf33rd/Source/PS2/cseDataFiles/PHD_PL00.c','PHD_PL00',1)
+
+# SpuMap: NumPages then a bank size table per page; bank addresses are the
+# running sum of the sizes starting at SpuTopAddr.
+d=load('src/sf33rd/Source/PS2/cseDataFiles/SpuMap.c')
+npages=struct.unpack_from('<I',d,8)[0]
+assert npages == 1, npages
+print("SpuMap flSpuMapInit=0")
+addr=0x5020
+for b in range(4):
+    size=struct.unpack_from('<I',d,16+4*b)[0]
+    print(f"  BankAddr[{b}]={addr} BankSize[{b}]={size}")
+    addr+=size
