@@ -27,14 +27,13 @@ src/port/sdl/sdl_pad.c
 src/port/sound/adx.c
 src/port/sound/spu.c
 src/port/wiiu/wiiu_game_renderer.c
-src/port/wiiu/wiiu_app.c
 src/port/wiiu/wiiu_shaders.c'
 
 setup() {
     command -v "$CC" >/dev/null || { echo "missing $CC (apt install gcc-powerpc-linux-gnu)"; exit 1; }
     [ -d /usr/include/SDL2 ] || { echo "missing SDL2 headers (apt install libsdl2-dev)"; exit 1; }
     rm -rf "$STAGE"
-    mkdir -p "$STAGE/SDL2" "$STAGE/coreinit"
+    mkdir -p "$STAGE/SDL2"
     cp /usr/include/SDL2/*.h "$STAGE/SDL2/"
     # SDL_config.h redirects into the multiarch dir; inline it so the cross
     # compiler never sees the host's glibc headers.
@@ -42,13 +41,7 @@ setup() {
         [ -f "$d" ] && cp "$d" "$STAGE/SDL2/"
     done
     sed -i 's|#include <SDL2/_real_SDL_config.h>|#include "_real_SDL_config.h"|' "$STAGE/SDL2/SDL_config.h"
-    cat > "$STAGE/coreinit/debug.h" <<'HDR'
-#ifndef STUB_COREINIT_DEBUG_H
-#define STUB_COREINIT_DEBUG_H
-void OSReport(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
-void OSFatal(const char* msg);
-#endif
-HDR
+    cp -r "$ROOT/tools/be-stubs/." "$STAGE/"
     echo "staged headers in $STAGE"
 }
 

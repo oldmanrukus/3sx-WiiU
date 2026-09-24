@@ -2,6 +2,7 @@
 #include "arcade/arcade_balance.h"
 #include "args.h"
 #include "common.h"
+#include "port/wiiu/wiiu_trace.h"
 #include "configuration.h"
 #include "netplay/netplay.h"
 #if defined(__WIIU__)
@@ -202,15 +203,17 @@ void Game_Task_wiiu(struct _TASK* task_ptr) {
         /* Dispatch game logic */
         if (nowSoftReset() == 0) {
             void (*Main_Jmp_Tbl[3])(struct _TASK*) = { Wait_Auto_Load, Loop_Demo, Game };
-            OSReport("[3SX] GT: G_No=%d,%d f=%d\n", G_No[0], G_No[1], loop_frame); Main_Jmp_Tbl[G_No[0]](task_ptr); OSReport("[3SX] GT: done f=%d\n", loop_frame);
+            WIIU_TRACE_LOG("[3SX] GT: G_No=%d,%d f=%d\n", G_No[0], G_No[1], loop_frame);
+            Main_Jmp_Tbl[G_No[0]](task_ptr);
+            WIIU_TRACE_LOG("[3SX] GT: done f=%d\n", loop_frame);
         }
 
         seqsAfterProcess();
-        if (loop_frame >= 470) OSReport("[3SX] GT: pre texture_cash_update f=%d\n", loop_frame);
+        WIIU_TRACE_LOG("[3SX] GT: pre texture_cash_update f=%d\n", loop_frame);
         texture_cash_update();
-        if (loop_frame >= 470) OSReport("[3SX] GT: post texture_cash_update f=%d\n", loop_frame);
+        WIIU_TRACE_LOG("[3SX] GT: post texture_cash_update f=%d\n", loop_frame);
         move_pulpul_work();
-        if (loop_frame >= 470) OSReport("[3SX] GT: post move_pulpul f=%d\n", loop_frame);
+        WIIU_TRACE_LOG("[3SX] GT: post move_pulpul f=%d\n", loop_frame);
         Check_LDREQ_Queue();
     }
 
@@ -328,9 +331,9 @@ static void cpLoopTask() {
         switch (task_ptr->condition) {
         case 1:
             if (task_ptr->func_adrs) {
-                if (loop_frame >= 180) OSReport("[3SX] cpLoop: task[%d] enter\n", i);
+                WIIU_TRACE_LOG("[3SX] cpLoop: task[%d] enter\n", i);
                 task_ptr->func_adrs(task_ptr);
-                if (loop_frame >= 180) OSReport("[3SX] cpLoop: task[%d] exit\n", i);
+                WIIU_TRACE_LOG("[3SX] cpLoop: task[%d] exit\n", i);
             }
             break;
 
@@ -453,14 +456,19 @@ static void game_step_0() {
 
     mpp_w.inGame = false;
 
-    { static int gs0 = 0; if (gs0 < 3 || loop_frame > 170) OSReport("[3SX] gs0: njUserMain f=%d\n", loop_frame); gs0++; } njUserMain();
-    { static int gs1 = 0; if (gs1 < 3 || loop_frame > 170) OSReport("[3SX] gs0: seqsBefore f=%d\n", loop_frame); gs1++; } seqsBeforeProcess();
-    { static int gs2 = 0; if (gs2 < 3 || loop_frame > 170) OSReport("[3SX] gs0: njdp2d f=%d\n", loop_frame); gs2++; } njdp2d_draw();
-    { static int gs3 = 0; if (gs3 < 3 || loop_frame > 170) OSReport("[3SX] gs0: seqsAfter f=%d\n", loop_frame); gs3++; } seqsAfterProcess();
+    WIIU_TRACE_LOG("[3SX] gs0: njUserMain f=%d\n", loop_frame);
+    njUserMain();
+    WIIU_TRACE_LOG("[3SX] gs0: seqsBefore f=%d\n", loop_frame);
+    seqsBeforeProcess();
+    WIIU_TRACE_LOG("[3SX] gs0: njdp2d f=%d\n", loop_frame);
+    njdp2d_draw();
+    WIIU_TRACE_LOG("[3SX] gs0: seqsAfter f=%d\n", loop_frame);
+    seqsAfterProcess();
 
     KnjFlush();
     disp_effect_work();
-    { static int gs5 = 0; if (gs5 < 3 || loop_frame > 170) OSReport("[3SX] gs0: flFlip f=%d\n", loop_frame); gs5++; } flFlip(0);
+    WIIU_TRACE_LOG("[3SX] gs0: flFlip f=%d\n", loop_frame);
+    flFlip(0);
 }
 
 static void game_step_1() {
@@ -537,9 +545,11 @@ static int loop() {
             if (!is_running) break;
 
             loop_frame++;
-            if (loop_frame % 60 == 0) OSReport("[3SX] frame %d\n", loop_frame);
+            WIIU_TRACE_LOG("[3SX] frame %d\n", loop_frame);
 
-#if defined(__WIIU__)
+#if defined(__WIIU__) && defined(WIIU_TRACE)
+            /* OSScreen task overlay from bring-up. It draws over the game, so
+               it only comes back with the rest of the tracing. */
             if (loop_frame % 120 == 1) {
                 char buf[80];
                 dbg_clear();
@@ -559,17 +569,15 @@ static int loop() {
                 snprintf(buf, sizeof(buf), "G_No:[%d,%d] sys_timer:%lu",
                          G_No[0], G_No[1], (unsigned long)system_timer);
                 dbg_print(buf);
-                dbg_print("");
-                dbg_print("Engine running. Awaiting GX2 renderer.");
                 dbg_flip();
             }
 #endif
 
             SDLApp_BeginFrame();
             game_step_0();
-            { static int ef_dbg = 0; if (ef_dbg < 3 || loop_frame > 170) OSReport("[3SX] gs0: pre_EndFrame f=%d\n", loop_frame); ef_dbg++; }
+            WIIU_TRACE_LOG("[3SX] gs0: pre_EndFrame f=%d\n", loop_frame);
             SDLApp_EndFrame();
-            { static int ef2_dbg = 0; if (ef2_dbg < 3 || loop_frame > 170) OSReport("[3SX] gs0: post_EndFrame f=%d\n", loop_frame); ef2_dbg++; }
+            WIIU_TRACE_LOG("[3SX] gs0: post_EndFrame f=%d\n", loop_frame);
             game_step_1();
             break;
         }

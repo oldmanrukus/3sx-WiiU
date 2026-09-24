@@ -8,6 +8,14 @@ project(3sx-wiiu LANGUAGES C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Per-frame console tracing. OSReport() is synchronous, so leaving it on costs
+# a lot of frame time: cmake -DWIIU_TRACE=ON to get it back while debugging.
+option(WIIU_TRACE "Enable per-frame OSReport tracing" OFF)
+
+if(WIIU_TRACE)
+    add_compile_definitions(WIIU_TRACE)
+endif()
+
 # Fix "Argument list too long" on MSYS2
 set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS ON)
 set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES ON)

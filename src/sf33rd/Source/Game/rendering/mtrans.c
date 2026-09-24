@@ -27,6 +27,7 @@ static inline TileMapEntry LE_TME(const TileMapEntry* p) {
 #endif
 #include "sf33rd/Source/Game/rendering/mtrans.h"
 #include "common.h"
+#include "port/wiiu/wiiu_trace.h"
 #include "rendering/game_renderer.h"
 #include "sf33rd/AcrSDK/ps2/flps2render.h"
 #include "sf33rd/AcrSDK/ps2/foundaps2.h"
@@ -1613,7 +1614,7 @@ void seqsAfterProcess() {
     extern int loop_frame;
 
     if ((Debug_w[0x27] != 3) && (seqs_w.sprTotal != 0)) {
-        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: sprTotal=%d f=%d\n", seqs_w.sprTotal, loop_frame);
+        WIIU_TRACE_LOG("[3SX] seqsAfter: sprTotal=%d f=%d\n", seqs_w.sprTotal, loop_frame);
         for (i = 0; i < 24; i++) {
             if (seqs_w.up[i]) {
                 if (Debug_w[0x22]) {
@@ -1626,7 +1627,7 @@ void seqsAfterProcess() {
             }
         }
 
-        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: renew done f=%d\n", loop_frame);
+        WIIU_TRACE_LOG("[3SX] seqsAfter: renew done f=%d\n", loop_frame);
 
         if (seqs_w.sprMax < seqs_w.sprTotal) {
             seqs_w.sprMax = seqs_w.sprTotal;
@@ -1644,7 +1645,7 @@ void seqsAfterProcess() {
                 Renderer_DrawSprite2(&seqs_w.chip[i]);
             }
         }
-        if (loop_frame >= 470) OSReport("[3SX] seqsAfter: draw done f=%d\n", loop_frame);
+        WIIU_TRACE_LOG("[3SX] seqsAfter: draw done f=%d\n", loop_frame);
     }
 }
 
