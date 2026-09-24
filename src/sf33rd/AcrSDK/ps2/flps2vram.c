@@ -31,12 +31,27 @@ u32 flCreateTextureHandle(plContext* bits, u32 flag) {
     }
 
     lpflTexture = &flTexture[LO_16_BITS(th) - 1];
-    flPS2GetTextureInfoFromContext(bits, 1, th, flag);
+
+    if (flPS2GetTextureInfoFromContext(bits, 1, th, flag) == 0) {
+        /* It marks the slot in use before it validates, so release it rather
+           than leaking a texture slot per rejected texture. */
+        flMemset(lpflTexture, 0, sizeof(FLTexture));
+        return 0;
+    }
 
     if (bits->ptr == NULL) {
         lpflTexture->mem_handle = flPS2GetSystemMemoryHandle(lpflTexture->size, 2);
+
+        if (lpflTexture->mem_handle == 0) {
+            flMemset(lpflTexture, 0, sizeof(FLTexture));
+            return 0;
+        }
     } else {
-        flPS2ConvertTextureFromContext(bits, lpflTexture, 0);
+        if (flPS2ConvertTextureFromContext(bits, lpflTexture, 0) == 0) {
+            flMemset(lpflTexture, 0, sizeof(FLTexture));
+            return 0;
+        }
+
         flPS2CreateTextureHandle(th, flag);
     }
 
@@ -184,15 +199,26 @@ u32 flCreatePaletteHandle(plContext* lpcontext, u32 flag) {
     }
 
     lpflPalette = &flPalette[HI_16_BITS(ph) - 1];
-    flPS2GetPaletteInfoFromContext(lpcontext, ph, flag);
+
+    if (flPS2GetPaletteInfoFromContext(lpcontext, ph, flag) == 0) {
+        flMemset(lpflPalette, 0, sizeof(FLTexture));
+        return 0;
+    }
 
     if (lpcontext->ptr == NULL) {
         lpflPalette->mem_handle = flPS2GetSystemMemoryHandle(lpflPalette->size, 2);
+
+        if (lpflPalette->mem_handle == 0) {
+            flMemset(lpflPalette, 0, sizeof(FLTexture));
+            return 0;
+        }
     } else {
-        if (lpcontext->width == 256) {
-            flPS2ConvertTextureFromContext(lpcontext, lpflPalette, 1);
-        } else {
-            flPS2ConvertTextureFromContext(lpcontext, lpflPalette, 0);
+        const s32 ok = (lpcontext->width == 256) ? flPS2ConvertTextureFromContext(lpcontext, lpflPalette, 1)
+                                                 : flPS2ConvertTextureFromContext(lpcontext, lpflPalette, 0);
+
+        if (ok == 0) {
+            flMemset(lpflPalette, 0, sizeof(FLTexture));
+            return 0;
         }
 
         flPS2CreatePaletteHandle(ph, flag);
@@ -996,6 +1022,16 @@ s32 flPS2ConvertTextureFromContext(plContext* lpcontext, FLTexture* lpflTexture,
 
     lpflTexture->mem_handle = flPS2GetSystemMemoryHandle(lpflTexture->size, 2);
     dst_ptr = flPS2GetSystemBuffAdrs(lpflTexture->mem_handle);
+
+    if (dst_ptr == NULL) {
+        /* Every branch below copies or converts straight into dst_ptr, so an
+           allocation failure here used to write lpflTexture->size bytes to
+           address 0. */
+        OSReport("[3SX] WARN flPS2ConvertTextureFromContext: no memory for %ux%u (%u bytes)\n",
+                 lpflTexture->width, lpflTexture->height, lpflTexture->size);
+        return 0;
+    }
+
     tcon.bitdepth = lpcontext->bitdepth;
     tcon.desc = lpcontext->desc;
     dw = lpflTexture->width;
