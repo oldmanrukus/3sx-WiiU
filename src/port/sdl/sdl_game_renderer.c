@@ -388,17 +388,32 @@ void SDLGameRenderer_DestroyTexture(unsigned int texture_handle) {
  * flPS2GetSystemBuffAdrs() hands back a raw pointer into the compactable system
  * memory pool, and SDL_CreateSurfaceFrom() keeps that pointer for the lifetime
  * of the surface. Compacting the pool moves every block, so each live surface
- * has to be rebuilt from the block's new address or it reads freed/moved memory.
+ * has to be pointed at its block's new address or it reads moved memory.
+ *
+ * Compaction relocates the pixels but does not change them, so the GPU copies
+ * already in texture_cache stay valid and are deliberately left alone --
+ * dropping them here would re-upload every texture in the game for nothing.
+ * The surfaces do not own their pixels, so repointing them is all that's
+ * needed. A surface whose block has gone away is dropped instead; SetTexture()
+ * skips an empty slot, which beats drawing from a null pixel pointer.
  */
 void SDLGameRenderer_RelocateTextures(void) {
     for (int i = 0; i < FL_TEXTURE_MAX; i++) {
-        if (surfaces[i] == NULL) {
+        SDL_Surface* surface = surfaces[i];
+
+        if (surface == NULL) {
             continue;
         }
 
-        const unsigned int th = (unsigned int)(i + 1);
-        SDLGameRenderer_DestroyTexture(th);
-        SDLGameRenderer_CreateTexture(th);
+        void* pixels = flPS2GetSystemBuffAdrs(flTexture[i].mem_handle);
+
+        if (pixels == NULL) {
+            OSReport("[3SX] WARN: texture %d lost its buffer across a compaction\n", i + 1);
+            SDLGameRenderer_DestroyTexture((unsigned int)(i + 1));
+            continue;
+        }
+
+        surface->pixels = pixels;
     }
 }
 
